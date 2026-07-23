@@ -6,8 +6,8 @@ type BaseResponseInfo = {
 
 export type ErrorResponse = BaseResponseInfo & {
   success: false;
-  message: string;
-  error: Record<string, unknown>;
+  message: string[];
+  error: string;
 };
 
 export type SuccessResponse<T> = BaseResponseInfo & {

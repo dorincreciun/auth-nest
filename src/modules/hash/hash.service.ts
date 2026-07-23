@@ -8,7 +8,7 @@ export class HashService {
   public constructor(private readonly configService: ConfigService<EnvironmentInterface>) {}
 
   public async hash(data: string): Promise<string> {
-    const saltRounds = this.configService.getOrThrow<number>('SALT_ROUNDS');
+    const saltRounds = Number(this.configService.getOrThrow<number>('SALT_ROUNDS'));
     return await bcrypt.hash(data, saltRounds);
   }
 

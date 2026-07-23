@@ -35,27 +35,35 @@ export class HttpExceptionFilter implements ExceptionFilter {
     return exception instanceof HttpException ? exception.getResponse() : null;
   }
 
-  private extractMessage(exception: unknown, exceptionResponse: string | object | null): string {
+  private extractMessage(exception: unknown, exceptionResponse: string | object | null): string[] {
     if (typeof exceptionResponse === 'string') {
-      return exceptionResponse;
+      return [exceptionResponse];
     }
 
-    if (exceptionResponse && 'message' in (exceptionResponse as object)) {
+    if (
+      typeof exceptionResponse === 'object' &&
+      exceptionResponse !== null &&
+      'message' in exceptionResponse
+    ) {
       const msg = (exceptionResponse as Record<string, unknown>).message;
-      return Array.isArray(msg) ? msg.join(', ') : String(msg);
+      return Array.isArray(msg) ? msg.map(String) : [String(msg)];
     }
 
     if (exception instanceof Error) {
-      return exception.message;
+      return [exception.message];
     }
 
-    return 'Internal server error';
+    return ['Internal server error'];
   }
 
-  private extractError(exceptionResponse: string | object | null): Record<string, unknown> {
-    if (exceptionResponse && typeof exceptionResponse === 'object') {
-      return exceptionResponse as Record<string, unknown>;
+  private extractError(exceptionResponse: string | object | null): string {
+    if (
+      typeof exceptionResponse === 'object' &&
+      exceptionResponse !== null &&
+      'error' in exceptionResponse
+    ) {
+      return String((exceptionResponse as Record<string, unknown>).error);
     }
-    return {};
+    return 'Internal Server Error';
   }
 }

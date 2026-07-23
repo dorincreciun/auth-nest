@@ -7,15 +7,13 @@ datasource db {
 }
 
 model User {
-  id String @id @default(uuid())
-
-  email     String  @unique
+  id        String   @id @default(uuid())
+  email     String   @unique
   password  String
-  firstName String? @map("first_name")
-  lastName  String? @map("last_name")
-
+  firstName String?  @map("first_name")
+  lastName  String?  @map("last_name")
   createdAt DateTime @default(now()) @map("created_at")
-  updateAt  DateTime @updatedAt @map("update_at")
+  updatedAt DateTime @updatedAt @map("update_at")
 
   @@map("users")
 }
