@@ -40,6 +40,7 @@ async function bootstrap() {
         client: redisService.getClient(),
         prefix: config.getOrThrow<string>('SESSION_FOLDER'),
       }),
+      name: config.getOrThrow<string>('SESSION_NAME'),
       secret: config.getOrThrow<string>('SESSION_SECRET'),
       resave: false,
       saveUninitialized: false,
