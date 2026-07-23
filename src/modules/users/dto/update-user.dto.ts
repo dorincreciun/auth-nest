@@ -31,4 +31,7 @@ export class UpdateUserDto {
   @MinLength(2, { message: 'Numele trebuie să aibă minim 2 caractere' })
   @MaxLength(50, { message: 'Numele nu poate depăși 50 de caractere' })
   lastName?: string;
+
+  @IsOptional()
+  isVerified?: boolean;
 }

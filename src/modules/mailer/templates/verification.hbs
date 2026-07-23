@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmă contul</title>
+  <style>
+    /* Reset și stiluri de bază */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f7fa;
+      line-height: 1.6;
+      color: #2d3748;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    /* Header - Stil NestJS */
+    .header {
+      background: linear-gradient(135deg, #e0234e 0%, #c01e44 100%);
+      padding: 40px 40px 30px;
+      text-align: center;
+      position: relative;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #f5a623, #e0234e, #f5a623);
+      background-size: 200% 100%;
+      animation: shimmer 3s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% {
+        background-position: 200% 0;
+      }
+      50% {
+        background-position: -200% 0;
+      }
+    }
+
+    .header h1 {
+      color: #ffffff;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    .header .subtitle {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 16px;
+      font-weight: 300;
+    }
+
+    /* Logo icon */
+    .logo-icon {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .logo-icon svg {
+      width: 48px;
+      height: 48px;
+      fill: #ffffff;
+    }
+
+    /* Content */
+    .content {
+      padding: 48px 40px 40px;
+    }
+
+    .greeting {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a202c;
+      margin-bottom: 16px;
+    }
+
+    .message {
+      color: #4a5568;
+      font-size: 16px;
+      margin-bottom: 28px;
+    }
+
+    .message strong {
+      color: #e0234e;
+      font-weight: 600;
+    }
+
+    /* Token / Cod de verificare */
+    .token-container {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      margin: 32px 0;
+      border: 2px dashed #e2e8f0;
+      transition: all 0.3s ease;
+    }
+
+    .token-container:hover {
+      border-color: #e0234e;
+      background: #fff5f7;
+    }
+
+    .token-label {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #a0aec0;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .token-code {
+      font-family: 'Courier New', monospace;
+      font-size: 32px;
+      font-weight: 700;
+      color: #1a202c;
+      letter-spacing: 4px;
+      background: #edf2f7;
+      padding: 12px 24px;
+      border-radius: 8px;
+      display: inline-block;
+      user-select: all;
+    }
+
+    .token-expiry {
+      font-size: 14px;
+      color: #718096;
+      margin-top: 12px;
+    }
+
+    .token-expiry span {
+      color: #e0234e;
+      font-weight: 600;
+    }
+
+    /* Footer */
+    .footer {
+      background: #f7fafc;
+      padding: 24px 40px;
+      text-align: center;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .footer p {
+      color: #718096;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .footer .help-text {
+      font-size: 13px;
+      color: #a0aec0;
+    }
+
+    .footer .help-text a {
+      color: #e0234e;
+      text-decoration: none;
+    }
+
+    .footer .help-text a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .container {
+        margin: 20px auto;
+        border-radius: 12px;
+      }
+
+      .header {
+        padding: 30px 20px 24px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .content {
+        padding: 32px 24px;
+      }
+
+      .token-code {
+        font-size: 24px;
+        padding: 10px 16px;
+        letter-spacing: 2px;
+      }
+
+      .footer {
+        padding: 20px 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+    </div>
+    <h1>Confirmă contul</h1>
+    <p class="subtitle">Bun venit în comunitatea noastră</p>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <p class="greeting">Salut!</p>
+    <p class="message">
+      <strong>Îți mulțumim că ți-ai creat un cont!</strong><br>
+      Pentru a-ți activa contul și a beneficia de toate funcționalitățile,
+      te rugăm să verifici adresa de email folosind codul de mai jos.
+    </p>
+
+    <!-- Token Code -->
+    <div class="token-container">
+      <div class="token-label">🔑 Cod de verificare</div>
+      <div class="token-code">{{token}}</div>
+      <div class="token-expiry">
+        ⏱️ Acest cod expiră în <span>{{expiresInMinutes}} minute</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>Ai primit acest email pentru că ți-ai creat un cont pe platforma noastră.</p>
+    <p class="help-text">
+      Dacă nu ai solicitat acest email, poți să îl ignori.<br>
+      Pentru asistență, contactează-ne la <a href="mailto:support@example.com">support@example.com</a>
+    </p>
+  </div>
+</div>
+</body>
+</html>

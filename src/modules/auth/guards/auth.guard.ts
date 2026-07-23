@@ -1,16 +1,25 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
+import { UsersService } from '../../users';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  public constructor(private readonly usersService: UsersService) {}
+
+  public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
 
-    const userId = request.session?.userId;
-
-    if (!userId) {
+    if (typeof request.session.userId === 'undefined') {
       throw new UnauthorizedException('Sesiune invalidă sau expirată');
     }
+
+    const user = await this.usersService.findById(request.session.userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Utilizatorul nu a fost găsit');
+    }
+
+    request.user = user;
 
     return true;
   }

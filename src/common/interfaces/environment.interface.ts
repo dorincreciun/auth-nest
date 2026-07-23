@@ -24,4 +24,11 @@ export interface EnvironmentInterface {
   REDIS_HOST: string;
   REDIS_PORT: number;
   REDIS_URL: string;
+
+  MAIL_HOST: string;
+  MAIL_PORT: number;
+  MAIL_SECURE: boolean;
+  MAIL_USER: string;
+  MAIL_PASSWORD: string;
+  MAIL_FROM: string;
 }

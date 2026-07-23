@@ -6,14 +6,37 @@ datasource db {
   provider = "postgresql"
 }
 
+enum TokenType {
+  EMAIL_VERIFICATION
+  RESET_PASSWORD
+}
+
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  firstName String?  @map("first_name")
-  lastName  String?  @map("last_name")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("update_at")
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String
+  firstName  String?  @map("first_name")
+  lastName   String?  @map("last_name")
+  isVerified Boolean  @default(false) @map("is_verified")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tokens VerificationToken[]
 
   @@map("users")
+}
+
+model VerificationToken {
+  id        String    @id @default(uuid())
+  token     String
+  type      TokenType
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([token])
+  @@map("verification_tokens")
 }
