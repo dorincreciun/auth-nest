@@ -16,7 +16,13 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new TransformInterceptor());
   app.useGlobalFilters(new PrismaExceptionFilter(), new HttpExceptionFilter());
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   const port = config.getOrThrow<number>('APP_PORT');
   const url = config.getOrThrow<string>('APP_URL');
