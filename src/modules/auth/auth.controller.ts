@@ -106,6 +106,7 @@ export class AuthController {
       deviceData: extractDeviceData(req),
     };
 
+
     return new Promise<void>((resolve, reject) => {
       req.session.regenerate((regenerateErr: Error | null) => {
         if (regenerateErr) {
