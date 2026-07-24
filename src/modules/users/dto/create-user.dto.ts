@@ -1,7 +1,13 @@
 import { IsEmail, IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUserDto {
+  @ApiProperty({
+    example: 'test@gmail.com',
+    description: 'Adresa de unică de email a utilizatorului',
+    type: String,
+  })
   @IsEmail({}, { message: 'Adresa de email nu este validă' })
   @IsNotEmpty({ message: 'Email-ul este obligatoriu' })
   @Transform(({ value }: { value: unknown }) =>
@@ -9,6 +15,14 @@ export class CreateUserDto {
   )
   email: string;
 
+  @ApiProperty({
+    example: 'Password123!',
+    description:
+      'Parola contului (minim 8 caractere, conține litere mari, mici, cifre și caractere speciale)',
+    type: String,
+    minLength: 8,
+    maxLength: 64,
+  })
   @IsString({ message: 'Parola trebuie să fie un text' })
   @IsNotEmpty({ message: 'Parola este obligatorie' })
   @MinLength(8, { message: 'Parola trebuie să aibă minim 8 caractere' })

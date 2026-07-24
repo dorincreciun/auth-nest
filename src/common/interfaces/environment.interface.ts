@@ -2,6 +2,8 @@ import type { StringValue } from 'ms';
 
 export interface EnvironmentInterface {
   NODE_ENV: string;
+
+  APP_NAME: string;
   APP_URL: string;
   APP_PORT: number;
 
