@@ -4,15 +4,25 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { User } from '@prisma/client';
 import { HashService } from '../hash';
+import { MailerService } from '../mailer';
 import { CreateUserDto, UsersService } from '../users';
 import { LoginDto, VerificationEmailResponseDto } from './dto';
 import { TokenService } from './token.service';
-import { MailerService } from '../mailer';
-import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
+  private static readonly MESSAGES = {
+    REGISTER_CONFLICT:
+      'Nu s-a putut finaliza înregistrarea. Verifică datele sau autentifică-te dacă ai deja un cont.',
+    LOGIN_INVALID_CREDENTIALS: 'Email sau parolă incorectă',
+    EMAIL_ALREADY_VERIFIED: 'Adresa de email este deja confirmată.',
+    EMAIL_VERIFICATION_SENT:
+      'Un nou cod de verificare a fost trimis pe adresa ta de email. Verifică și folderul Spam.',
+    EMAIL_CONFIRMED: 'Adresa ta de email a fost confirmată cu succes! Contul tău este acum activ.',
+  } as const;
+
   public constructor(
     private hashService: HashService,
     private userService: UsersService,
@@ -21,17 +31,17 @@ export class AuthService {
   ) {}
 
   /**
-   * Înregistrează unutilizator nou în sistem.
+   * Înregistrează un utilizator nou în sistem.
    * Validează unicitatea emailului, realizează hash-ul parolei și salvează datele în baza de date.
    */
   public async register(dto: CreateUserDto): Promise<User> {
     const userExists = await this.userService.exists(dto.email);
+    const passwordHash = await this.hashService.hash(dto.password);
 
     if (userExists) {
-      throw new ConflictException('User already exists');
+      throw new ConflictException(AuthService.MESSAGES.REGISTER_CONFLICT);
     }
 
-    const passwordHash = await this.hashService.hash(dto.password);
     return await this.userService.create({
       ...dto,
       password: passwordHash,
@@ -40,19 +50,15 @@ export class AuthService {
 
   /**
    * Autentifică un utilizator existent.
-   * Verifică existența adresa de email și corectitudinea parolei introduse.
+   * Verifică existența adresei de email și corectitudinea parolei introduse.
    */
   public async login(dto: LoginDto): Promise<User> {
     const user = await this.userService.findByEmail(dto.email);
+    const passwordHash = user?.password ?? this.hashService.getDummyHash();
+    const isPasswordMatching = await this.hashService.compare(dto.password, passwordHash);
 
-    if (!user) {
-      throw new UnauthorizedException('Email sau parolă incorectă');
-    }
-
-    const isPasswordMatching = await this.hashService.compare(dto.password, user.password);
-
-    if (!isPasswordMatching) {
-      throw new UnauthorizedException('Email sau parolă incorectă');
+    if (!user || !isPasswordMatching) {
+      throw new UnauthorizedException(AuthService.MESSAGES.LOGIN_INVALID_CREDENTIALS);
     }
 
     return user;
@@ -66,7 +72,7 @@ export class AuthService {
     const { isVerified, id, email } = user;
 
     if (isVerified) {
-      throw new BadRequestException('Adresa de email este deja confirmată.');
+      throw new BadRequestException(AuthService.MESSAGES.EMAIL_ALREADY_VERIFIED);
     }
 
     const { expiresAt, token } = await this.tokenService.createToken(
@@ -78,8 +84,7 @@ export class AuthService {
     await this.mailerService.sendVerificationEmail(email, token, expiresAt);
 
     return {
-      message:
-        'Un nou cod de verificare a fost trimis pe adresa ta de email. Verifică și folderul Spam.',
+      message: AuthService.MESSAGES.EMAIL_VERIFICATION_SENT,
       tokenExpiresAt: expiresAt.toISOString(),
     };
   }
@@ -91,14 +96,14 @@ export class AuthService {
     const { isVerified, id } = user;
 
     if (isVerified) {
-      throw new BadRequestException('Adresa de email este deja confirmată.');
+      throw new BadRequestException(AuthService.MESSAGES.EMAIL_ALREADY_VERIFIED);
     }
 
     await this.tokenService.verifyToken(id, token, 'EMAIL_VERIFICATION');
     await this.userService.update(id, { isVerified: true });
 
     return {
-      message: 'Adresa ta de email a fost confirmată cu succes! Contul tău este acum activ.',
+      message: AuthService.MESSAGES.EMAIL_CONFIRMED,
     };
   }
 }

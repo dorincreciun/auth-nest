@@ -4,6 +4,11 @@ import { ErrorResponse } from '../interfaces';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private static readonly MESSAGES = {
+    INTERNAL_SERVER_ERROR: 'Internal server error',
+    ERROR_LABEL: 'Internal Server Error',
+  } as const;
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -53,7 +58,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return [exception.message];
     }
 
-    return ['Internal server error'];
+    return [HttpExceptionFilter.MESSAGES.INTERNAL_SERVER_ERROR];
   }
 
   private extractError(exceptionResponse: string | object | null): string {
@@ -64,6 +69,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
     ) {
       return String((exceptionResponse as Record<string, unknown>).error);
     }
-    return 'Internal Server Error';
+    return HttpExceptionFilter.MESSAGES.ERROR_LABEL;
   }
 }

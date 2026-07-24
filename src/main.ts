@@ -13,7 +13,7 @@ import { AppModule } from './app.module';
 import { EnvironmentInterface } from './common/interfaces';
 import { TransformInterceptor } from './common/interceptors';
 import { HttpExceptionFilter, PrismaExceptionFilter } from './common/exceptions';
-import { isDevelopment, isProduction, parseBoolean } from './common/utils';
+import { isDevelopment, isProduction } from './common/utils';
 
 /* Modules */
 import { RedisService } from './modules/redis';
@@ -56,7 +56,7 @@ async function bootstrap() {
       cookie: {
         maxAge: ms(config.getOrThrow<StringValue>('SESSION_MAX_AGE')),
         domain: config.getOrThrow<string>('SESSION_DOMAIN'),
-        httpOnly: parseBoolean(config.getOrThrow<string>('SESSION_HTTP_ONLY')),
+        httpOnly: true,
         secure: isProduction(),
         sameSite: 'lax',
       },

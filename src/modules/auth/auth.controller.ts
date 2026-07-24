@@ -10,17 +10,24 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
-import { AuthService } from './auth.service';
-import { CreateUserDto, ResponseUserDto, UserMapper } from '../users';
-import { LoginDto } from './dto';
-import { extractDeviceData } from '../../common/utils';
-import { Auth } from './decorators';
-import { CurrentUser } from '../../common/decorators';
 import { type User } from '@prisma/client';
+import { CurrentUser } from '../../common/decorators';
+import { extractDeviceData } from '../../common/utils';
+import { CreateUserDto, ResponseUserDto, UserMapper } from '../users';
+import { AuthService } from './auth.service';
+import { Auth } from './decorators';
+import { LoginDto } from './dto';
 import { ConfirmEmailDto } from './dto/confirm-email.dto';
 
 @Controller('auth')
 export class AuthController {
+  private static readonly MESSAGES = {
+    LOGOUT_SUCCESS: 'Deconectare reușită',
+    SESSION_REGENERATE_ERROR: 'Eroare la reînnoirea sesiunii',
+    SESSION_SAVE_ERROR: 'Eroare la salvarea sesiunii',
+    LOGOUT_ERROR: 'A apărut o eroare la deconectare',
+  } as const;
+
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
@@ -71,7 +78,7 @@ export class AuthController {
     const sessionCookieName = this.config.getOrThrow<string>('SESSION_NAME');
     res.clearCookie(sessionCookieName, { path: '/' });
 
-    return { message: 'Deconectare reușită' };
+    return { message: AuthController.MESSAGES.LOGOUT_SUCCESS };
   }
 
   /**
@@ -106,11 +113,10 @@ export class AuthController {
       deviceData: extractDeviceData(req),
     };
 
-
     return new Promise<void>((resolve, reject) => {
       req.session.regenerate((regenerateErr: Error | null) => {
         if (regenerateErr) {
-          reject(new InternalServerErrorException('Eroare la reînnoirea sesiunii'));
+          reject(new InternalServerErrorException(AuthController.MESSAGES.SESSION_REGENERATE_ERROR));
           return;
         }
 
@@ -118,7 +124,7 @@ export class AuthController {
 
         req.session.save((saveErr: Error | null) => {
           if (saveErr) {
-            reject(new InternalServerErrorException('Eroare la salvarea sesiunii'));
+            reject(new InternalServerErrorException(AuthController.MESSAGES.SESSION_SAVE_ERROR));
             return;
           }
           resolve();
@@ -134,7 +140,7 @@ export class AuthController {
     return new Promise<void>((resolve, reject) => {
       req.session.destroy((err: Error | null) => {
         if (err) {
-          reject(new InternalServerErrorException('A apărut o eroare la deconectare'));
+          reject(new InternalServerErrorException(AuthController.MESSAGES.LOGOUT_ERROR));
           return;
         }
         resolve();
