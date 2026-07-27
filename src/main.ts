@@ -31,6 +31,10 @@ async function bootstrap() {
   const url = config.getOrThrow<string>('APP_URL');
 
   // Global request/response pipeline
+  app.enableCors({
+    origin: config.getOrThrow<string>('CORS_ORIGIN'),
+    credentials: true,
+  });
   app.useGlobalInterceptors(new TransformInterceptor());
   app.useGlobalFilters(new PrismaExceptionFilter(), new HttpExceptionFilter());
   app.useGlobalPipes(

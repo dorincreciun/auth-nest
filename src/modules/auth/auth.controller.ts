@@ -11,10 +11,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { type User } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators';
-import { extractDeviceData } from '../../common/utils';
+import { extractDeviceData, isProduction } from '../../common/utils';
 import { CreateUserRequestDto, UserMapper } from '../users';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators';
@@ -49,6 +50,8 @@ export class AuthController {
    * - Inițiază o sesiune nouă securizată (anti-session fixation)
    * - Returnează datele utilizatorului creat
    */
+  @SkipThrottle({ short: true, medium: true })
+  @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 / oră
   @HttpCode(HttpStatus.CREATED)
   @Post('register')
   public async register(
@@ -66,6 +69,8 @@ export class AuthController {
    * - Creează o sesiune nouă și salvează datele dispozitivului
    * - Returnează profilul utilizatorului
    */
+  @SkipThrottle({ medium: true, long: true })
+  @Throttle({ short: { limit: 5, ttl: 60 * 1000 } }) // 5 / minut
   @HttpCode(HttpStatus.OK)
   @Post('login')
   public async login(
@@ -82,6 +87,8 @@ export class AuthController {
    * - Distruge sesiunea activă de pe server/stocare
    * - Șterge cookie-ul de sesiune din browserul clientului
    */
+  @SkipThrottle({ medium: true, long: true })
+  @Throttle({ short: { limit: 10, ttl: 60 * 1000 } }) // 10 / minut
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('logout')
@@ -92,7 +99,13 @@ export class AuthController {
     await this.destroySession(req);
 
     const sessionCookieName = this.config.getOrThrow<string>('SESSION_NAME');
-    res.clearCookie(sessionCookieName, { path: '/' });
+    res.clearCookie(sessionCookieName, {
+      path: '/',
+      domain: this.config.getOrThrow<string>('SESSION_DOMAIN'),
+      httpOnly: true,
+      secure: isProduction(),
+      sameSite: 'lax',
+    });
 
     return { message: AuthController.MESSAGES.LOGOUT_SUCCESS };
   }
@@ -101,6 +114,8 @@ export class AuthController {
    * Returnează profilul utilizatorului din sesiunea curentă.
    * Protejat de AuthGuard — fără sesiune validă request-ul nu ajunge aici.
    */
+  @SkipThrottle({ medium: true, long: true })
+  @Throttle({ short: { limit: 30, ttl: 60 * 1000 } }) // 30 / minut
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Get('me')
@@ -116,6 +131,8 @@ export class AuthController {
    * Generează și trimite un cod de 6 cifre pe emailul utilizatorului.
    * - Folosit pentru a valida că adresa de e-mail introdusă la înregistrare este reală.
    */
+  @SkipThrottle({ short: true, long: true })
+  @Throttle({ medium: { limit: 2, ttl: 5 * 60 * 1000 } }) // 2 / 5 minute
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/send')
@@ -127,6 +144,8 @@ export class AuthController {
    * Primite un cod de 6 cifre de la client.
    * - Folosit pentru a valida că adresa de e-mail introdusă la înregistrare este reală.
    */
+  @SkipThrottle({ short: true, long: true })
+  @Throttle({ medium: { limit: 5, ttl: 5 * 60 * 1000 } }) // 5 / 5 minute
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/confirm')
@@ -142,6 +161,8 @@ export class AuthController {
    * - Dacă există un cont, generează un token RESET_PASSWORD și trimite emailul
    * - Răspunsul e mereu același, ca să nu permită enumerarea conturilor
    */
+  @SkipThrottle({ short: true, medium: true })
+  @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 / oră
   @HttpCode(HttpStatus.OK)
   @Post('password/forgot')
   public forgotPassword(@Body() dto: ForgotPasswordRequestDto): Promise<TokenSentResponseDto> {
@@ -153,6 +174,8 @@ export class AuthController {
    * - Validează emailul, tokenul RESET_PASSWORD și noua parolă
    * - Actualizează parola contului dacă tokenul este valid
    */
+  @SkipThrottle({ short: true, long: true })
+  @Throttle({ medium: { limit: 5, ttl: 5 * 60 * 1000 } }) // 5 / 5 minute
   @HttpCode(HttpStatus.OK)
   @Post('password/reset')
   public resetPassword(@Body() dto: ResetPasswordRequestDto): Promise<MessageResponseDto> {
