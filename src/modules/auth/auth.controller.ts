@@ -15,10 +15,11 @@ import type { Request, Response } from 'express';
 import { type User } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators';
 import { extractDeviceData } from '../../common/utils';
-import { CreateUserRequestDto, UserMapper, UserResponseDto } from '../users';
+import { CreateUserRequestDto, UserMapper } from '../users';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators';
 import {
+  AuthUserResponseDto,
   ConfirmEmailRequestDto,
   ForgotPasswordRequestDto,
   LoginRequestDto,
@@ -53,10 +54,10 @@ export class AuthController {
   public async register(
     @Req() req: Request,
     @Body() dto: CreateUserRequestDto,
-  ): Promise<UserResponseDto> {
+  ): Promise<AuthUserResponseDto> {
     const user = await this.authService.register(dto);
     await this.startSession(req, user);
-    return UserMapper.toResponseDto(user);
+    return { user: UserMapper.toResponseDto(user) };
   }
 
   /**
@@ -67,10 +68,13 @@ export class AuthController {
    */
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  public async login(@Req() req: Request, @Body() dto: LoginRequestDto): Promise<UserResponseDto> {
+  public async login(
+    @Req() req: Request,
+    @Body() dto: LoginRequestDto,
+  ): Promise<AuthUserResponseDto> {
     const user = await this.authService.login(dto);
     await this.startSession(req, user);
-    return UserMapper.toResponseDto(user);
+    return { user: UserMapper.toResponseDto(user) };
   }
 
   /**
@@ -100,12 +104,12 @@ export class AuthController {
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Get('me')
-  public getMe(@CurrentUser() user: User): UserResponseDto {
+  public getMe(@CurrentUser() user: User): AuthUserResponseDto {
     if (!user) {
       throw new UnauthorizedException(AuthController.MESSAGES.USER_NOT_AUTHENTICATED);
     }
 
-    return UserMapper.toResponseDto(user);
+    return { user: UserMapper.toResponseDto(user) };
   }
 
   /**
@@ -115,7 +119,7 @@ export class AuthController {
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/send')
-  public emailVerifySend(@CurrentUser() user: User) {
+  public emailVerifySend(@CurrentUser() user: User): Promise<TokenSentResponseDto> {
     return this.authService.sendVerificationEmail(user);
   }
 
@@ -126,7 +130,10 @@ export class AuthController {
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/confirm')
-  public async confirmEmail(@CurrentUser() user: User, @Body() dto: ConfirmEmailRequestDto) {
+  public confirmEmail(
+    @CurrentUser() user: User,
+    @Body() dto: ConfirmEmailRequestDto,
+  ): Promise<MessageResponseDto> {
     return this.authService.confirmEmail(user, dto.token);
   }
 
@@ -137,9 +144,7 @@ export class AuthController {
    */
   @HttpCode(HttpStatus.OK)
   @Post('password/forgot')
-  public async forgotPassword(
-    @Body() dto: ForgotPasswordRequestDto,
-  ): Promise<TokenSentResponseDto> {
+  public forgotPassword(@Body() dto: ForgotPasswordRequestDto): Promise<TokenSentResponseDto> {
     return this.authService.forgotPassword(dto);
   }
 
@@ -150,7 +155,7 @@ export class AuthController {
    */
   @HttpCode(HttpStatus.OK)
   @Post('password/reset')
-  public async resetPassword(@Body() dto: ResetPasswordRequestDto) {
+  public resetPassword(@Body() dto: ResetPasswordRequestDto): Promise<MessageResponseDto> {
     return this.authService.resetPassword(dto);
   }
 
