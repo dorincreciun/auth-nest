@@ -16,7 +16,8 @@ export class PrismaExceptionFilter implements ExceptionFilter {
     DB_UNAVAILABLE: 'Serviciul de bază de date este momentan indisponibil.',
     RUST_PANIC: 'A apărut o eroare internă critică. Reîncearcă mai târziu.',
     UNKNOWN_REQUEST_ERROR: 'A apărut o eroare neașteptată la nivel de bază de date.',
-    P2002: 'Nu s-a putut finaliza operația. Verifică datele sau autentifică-te dacă ai deja un cont.',
+    P2002:
+      'Nu s-a putut finaliza operația. Verifică datele sau autentifică-te dacă ai deja un cont.',
     P2025: 'Resursa cerută nu a fost găsită.',
     P2003: (field?: string) => `Relația către "${field ?? 'o altă resursă'}" nu este validă.`,
     P2014: 'Această operație ar încălca o relație obligatorie.',

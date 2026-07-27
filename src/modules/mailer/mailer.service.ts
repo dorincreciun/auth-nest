@@ -26,12 +26,22 @@ export class MailerService {
     }
   }
 
-  async sendPasswordResetEmail(to: string, token: string): Promise<void> {
-    await this.nestMailer.sendMail({
-      to,
-      subject: 'Resetare parolă',
-      template: 'password-reset',
-      context: { token },
-    });
+  async sendPasswordResetEmail(to: string, token: string, expiresAt: Date): Promise<void> {
+    try {
+      const expiresInMinutes = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60));
+
+      await this.nestMailer.sendMail({
+        to,
+        subject: 'Resetare parolă',
+        template: 'password-reset',
+        context: {
+          token,
+          expiresInMinutes,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Eșec trimitere email resetare parolă către ${to}`, error);
+      throw error;
+    }
   }
 }

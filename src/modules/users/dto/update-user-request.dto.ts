@@ -4,7 +4,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { AtLeastOneProperty } from '../../../common/decorators';
 
 @AtLeastOneProperty({ message: 'Trebuie să completezi cel puțin un câmp din profil!' })
-export class UpdateUserDto {
+export class UpdateUserRequestDto {
   @ApiPropertyOptional({
     example: 'test@gmail.com',
     description: 'Noua adresă de email a utilizatorului',

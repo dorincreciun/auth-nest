@@ -1,23 +1,31 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   InternalServerErrorException,
   Post,
   Req,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { type User } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators';
 import { extractDeviceData } from '../../common/utils';
-import { CreateUserDto, ResponseUserDto, UserMapper } from '../users';
+import { CreateUserRequestDto, UserMapper, UserResponseDto } from '../users';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators';
-import { LoginDto } from './dto';
-import { ConfirmEmailDto } from './dto/confirm-email.dto';
+import {
+  ConfirmEmailRequestDto,
+  ForgotPasswordRequestDto,
+  LoginRequestDto,
+  MessageResponseDto,
+  ResetPasswordRequestDto,
+  TokenSentResponseDto,
+} from './dto';
 
 @Controller('auth')
 export class AuthController {
@@ -26,6 +34,7 @@ export class AuthController {
     SESSION_REGENERATE_ERROR: 'Eroare la reînnoirea sesiunii',
     SESSION_SAVE_ERROR: 'Eroare la salvarea sesiunii',
     LOGOUT_ERROR: 'A apărut o eroare la deconectare',
+    USER_NOT_AUTHENTICATED: 'Nu ești autentificat. Autentifică-te pentru a continua.',
   } as const;
 
   constructor(
@@ -41,7 +50,10 @@ export class AuthController {
    */
   @HttpCode(HttpStatus.CREATED)
   @Post('register')
-  public async register(@Req() req: Request, @Body() dto: CreateUserDto): Promise<ResponseUserDto> {
+  public async register(
+    @Req() req: Request,
+    @Body() dto: CreateUserRequestDto,
+  ): Promise<UserResponseDto> {
     const user = await this.authService.register(dto);
     await this.startSession(req, user);
     return UserMapper.toResponseDto(user);
@@ -55,7 +67,7 @@ export class AuthController {
    */
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  public async login(@Req() req: Request, @Body() dto: LoginDto): Promise<ResponseUserDto> {
+  public async login(@Req() req: Request, @Body() dto: LoginRequestDto): Promise<UserResponseDto> {
     const user = await this.authService.login(dto);
     await this.startSession(req, user);
     return UserMapper.toResponseDto(user);
@@ -72,13 +84,28 @@ export class AuthController {
   public async logout(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponseDto> {
     await this.destroySession(req);
 
     const sessionCookieName = this.config.getOrThrow<string>('SESSION_NAME');
     res.clearCookie(sessionCookieName, { path: '/' });
 
     return { message: AuthController.MESSAGES.LOGOUT_SUCCESS };
+  }
+
+  /**
+   * Returnează profilul utilizatorului din sesiunea curentă.
+   * Protejat de AuthGuard — fără sesiune validă request-ul nu ajunge aici.
+   */
+  @Auth()
+  @HttpCode(HttpStatus.OK)
+  @Get('me')
+  public getMe(@CurrentUser() user: User): UserResponseDto {
+    if (!user) {
+      throw new UnauthorizedException(AuthController.MESSAGES.USER_NOT_AUTHENTICATED);
+    }
+
+    return UserMapper.toResponseDto(user);
   }
 
   /**
@@ -99,8 +126,32 @@ export class AuthController {
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/confirm')
-  public async confirmEmail(@CurrentUser() user: User, @Body() dto: ConfirmEmailDto) {
+  public async confirmEmail(@CurrentUser() user: User, @Body() dto: ConfirmEmailRequestDto) {
     return this.authService.confirmEmail(user, dto.token);
+  }
+
+  /**
+   * Pornește resetarea parolei pe baza adresei de email.
+   * - Dacă există un cont, generează un token RESET_PASSWORD și trimite emailul
+   * - Răspunsul e mereu același, ca să nu permită enumerarea conturilor
+   */
+  @HttpCode(HttpStatus.OK)
+  @Post('password/forgot')
+  public async forgotPassword(
+    @Body() dto: ForgotPasswordRequestDto,
+  ): Promise<TokenSentResponseDto> {
+    return this.authService.forgotPassword(dto);
+  }
+
+  /**
+   * Resetează parola folosind codul primit pe email.
+   * - Validează emailul, tokenul RESET_PASSWORD și noua parolă
+   * - Actualizează parola contului dacă tokenul este valid
+   */
+  @HttpCode(HttpStatus.OK)
+  @Post('password/reset')
+  public async resetPassword(@Body() dto: ResetPasswordRequestDto) {
+    return this.authService.resetPassword(dto);
   }
 
   /**
@@ -116,7 +167,9 @@ export class AuthController {
     return new Promise<void>((resolve, reject) => {
       req.session.regenerate((regenerateErr: Error | null) => {
         if (regenerateErr) {
-          reject(new InternalServerErrorException(AuthController.MESSAGES.SESSION_REGENERATE_ERROR));
+          reject(
+            new InternalServerErrorException(AuthController.MESSAGES.SESSION_REGENERATE_ERROR),
+          );
           return;
         }
 

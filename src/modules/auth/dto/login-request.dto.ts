@@ -1,7 +1,7 @@
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-export class LoginDto {
+export class LoginRequestDto {
   @IsEmail({}, { message: 'Adresa de email nu este validă' })
   @IsNotEmpty({ message: 'Email-ul este obligatoriu' })
   @Transform(({ value }: { value: unknown }) =>

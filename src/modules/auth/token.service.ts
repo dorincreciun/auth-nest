@@ -77,6 +77,22 @@ export class TokenService {
     return true;
   }
 
+  /**
+   * La fel ca verifyToken, dar primește email în loc de userId.
+   */
+  public async verifyTokenByEmail(email: string, token: string, type: TokenType): Promise<boolean> {
+    const user = await this.prismaService.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException(TokenService.MESSAGES.TOKEN_INVALID);
+    }
+
+    return this.verifyToken(user.id, token, type);
+  }
+
   private async ensureNoActiveToken(userId: string, type: TokenType): Promise<void> {
     const existingToken = await this.findToken(userId, type);
 
