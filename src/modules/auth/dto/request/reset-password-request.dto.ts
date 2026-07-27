@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
@@ -9,7 +10,12 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
+/** Body: POST /auth/password/reset */
 export class ResetPasswordRequestDto {
+  @ApiProperty({
+    example: 'test@gmail.com',
+    description: 'Adresa de email a contului',
+  })
   @IsEmail({}, { message: 'Adresa de email nu este validă' })
   @IsNotEmpty({ message: 'Email-ul este obligatoriu' })
   @Transform(({ value }: { value: unknown }) =>
@@ -17,11 +23,23 @@ export class ResetPasswordRequestDto {
   )
   email: string;
 
+  @ApiProperty({
+    example: '123456',
+    description: 'Codul OTP de 6 cifre primit pe email',
+    minLength: 6,
+    maxLength: 6,
+  })
   @IsString({ message: 'Token-ul trebuie să fie un text.' })
   @Length(6, 6, { message: 'Token-ul trebuie să conțină exact 6 cifre.' })
   @Matches(/^[0-9]+$/, { message: 'Token-ul poate conține doar cifre.' })
   token: string;
 
+  @ApiProperty({
+    example: 'NewPassword123!',
+    description: 'Noua parolă (minim 8 caractere, litere mari/mici, cifră și caracter special)',
+    minLength: 8,
+    maxLength: 64,
+  })
   @IsString({ message: 'Parola trebuie să fie un text' })
   @IsNotEmpty({ message: 'Parola este obligatorie' })
   @MinLength(8, { message: 'Parola trebuie să aibă minim 8 caractere' })

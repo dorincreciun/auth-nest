@@ -20,6 +20,7 @@ import { RedisService } from './modules/redis';
 
 /* Bootstrap setup files */
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SWAGGER_SESSION_AUTH } from './common/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -80,9 +81,10 @@ async function bootstrap() {
           `📄 [Download OpenAPI JSON schema](${jsonSchemaUrl})`,
       )
       .setVersion('1.0.0')
-      .addCookieAuth(sessionName, {
+      .addCookieAuth(SWAGGER_SESSION_AUTH, {
         type: 'apiKey',
         in: 'cookie',
+        name: sessionName,
         description: 'Session cookie set by express-session after login',
       })
       .addServer(`http://localhost:${port}`, 'Local development')

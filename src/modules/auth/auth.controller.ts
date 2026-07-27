@@ -11,24 +11,31 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { type User } from '@prisma/client';
+import { ErrorResponseDto } from '../../common/dto';
 import { CurrentUser } from '../../common/decorators';
+import { ApiSessionAuth } from '../../common/swagger';
 import { extractDeviceData, isProduction } from '../../common/utils';
 import { CreateUserRequestDto, UserMapper } from '../users';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators';
 import {
+  AuthUserApiResponseDto,
   AuthUserResponseDto,
   ConfirmEmailRequestDto,
   ForgotPasswordRequestDto,
   LoginRequestDto,
+  MessageApiResponseDto,
   MessageResponseDto,
   ResetPasswordRequestDto,
+  TokenSentApiResponseDto,
   TokenSentResponseDto,
 } from './dto';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   private static readonly MESSAGES = {
@@ -54,6 +61,14 @@ export class AuthController {
   @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 / oră
   @HttpCode(HttpStatus.CREATED)
   @Post('register')
+  @ApiResponse({
+    status: 201,
+    description: 'Utilizator creat și sesiune inițiată',
+    type: AuthUserApiResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Date invalide', type: ErrorResponseDto })
+  @ApiResponse({ status: 409, description: 'Conflict la înregistrare', type: ErrorResponseDto })
+  @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
   public async register(
     @Req() req: Request,
     @Body() dto: CreateUserRequestDto,
@@ -73,6 +88,14 @@ export class AuthController {
   @Throttle({ short: { limit: 5, ttl: 60 * 1000 } }) // 5 / minut
   @HttpCode(HttpStatus.OK)
   @Post('login')
+  @ApiResponse({
+    status: 200,
+    description: 'Autentificare reușită',
+    type: AuthUserApiResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Date invalide', type: ErrorResponseDto })
+  @ApiResponse({ status: 401, description: 'Credențiale invalide', type: ErrorResponseDto })
+  @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
   public async login(
     @Req() req: Request,
     @Body() dto: LoginRequestDto,
@@ -89,9 +112,16 @@ export class AuthController {
    */
   @SkipThrottle({ medium: true, long: true })
   @Throttle({ short: { limit: 10, ttl: 60 * 1000 } }) // 10 / minut
+  @ApiSessionAuth()
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('logout')
+  @ApiResponse({
+    status: 200,
+    description: 'Deconectare reușită',
+    type: MessageApiResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
   public async logout(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -116,9 +146,16 @@ export class AuthController {
    */
   @SkipThrottle({ medium: true, long: true })
   @Throttle({ short: { limit: 30, ttl: 60 * 1000 } }) // 30 / minut
+  @ApiSessionAuth()
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Get('me')
+  @ApiResponse({
+    status: 200,
+    description: 'Profilul utilizatorului autentificat',
+    type: AuthUserApiResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
   public getMe(@CurrentUser() user: User): AuthUserResponseDto {
     if (!user) {
       throw new UnauthorizedException(AuthController.MESSAGES.USER_NOT_AUTHENTICATED);
@@ -133,9 +170,22 @@ export class AuthController {
    */
   @SkipThrottle({ short: true, long: true })
   @Throttle({ medium: { limit: 2, ttl: 5 * 60 * 1000 } }) // 2 / 5 minute
+  @ApiSessionAuth()
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/send')
+  @ApiResponse({
+    status: 200,
+    description: 'Cod de verificare trimis pe email',
+    type: TokenSentApiResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Email deja confirmat / token încă valid',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
+  @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
   public emailVerifySend(@CurrentUser() user: User): Promise<TokenSentResponseDto> {
     return this.authService.sendVerificationEmail(user);
   }
@@ -146,9 +196,18 @@ export class AuthController {
    */
   @SkipThrottle({ short: true, long: true })
   @Throttle({ medium: { limit: 5, ttl: 5 * 60 * 1000 } }) // 5 / 5 minute
+  @ApiSessionAuth()
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/confirm')
+  @ApiResponse({
+    status: 200,
+    description: 'Email confirmat cu succes',
+    type: MessageApiResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Cod invalid / expirat', type: ErrorResponseDto })
+  @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
+  @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
   public confirmEmail(
     @CurrentUser() user: User,
     @Body() dto: ConfirmEmailRequestDto,
@@ -165,6 +224,13 @@ export class AuthController {
   @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 / oră
   @HttpCode(HttpStatus.OK)
   @Post('password/forgot')
+  @ApiResponse({
+    status: 200,
+    description: 'Răspuns generic (email trimis dacă adresa există)',
+    type: TokenSentApiResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Date invalide', type: ErrorResponseDto })
+  @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
   public forgotPassword(@Body() dto: ForgotPasswordRequestDto): Promise<TokenSentResponseDto> {
     return this.authService.forgotPassword(dto);
   }
@@ -178,6 +244,13 @@ export class AuthController {
   @Throttle({ medium: { limit: 5, ttl: 5 * 60 * 1000 } }) // 5 / 5 minute
   @HttpCode(HttpStatus.OK)
   @Post('password/reset')
+  @ApiResponse({
+    status: 200,
+    description: 'Parola a fost resetată',
+    type: MessageApiResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Cod invalid / date invalide', type: ErrorResponseDto })
+  @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
   public resetPassword(@Body() dto: ResetPasswordRequestDto): Promise<MessageResponseDto> {
     return this.authService.resetPassword(dto);
   }
