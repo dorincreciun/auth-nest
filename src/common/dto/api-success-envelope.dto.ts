@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
- * Câmpurile comune din envelope-ul de succes (TransformInterceptor).
- * Nu se folosește singur — extinde-l în DTO-uri concrete de tip *ApiResponseDto.
+ * Câmpurile comune din envelope-ul de succes (`TransformInterceptor`).
+ * Nu se folosește singur — extinde-l în DTO-uri concrete de tip `*ApiResponseDto`.
  */
 export class ApiSuccessEnvelopeDto {
   @ApiProperty({ example: true, description: 'Indică un răspuns de succes' })
@@ -12,11 +12,14 @@ export class ApiSuccessEnvelopeDto {
   statusCode: number;
 
   @ApiProperty({
-    example: '2026-07-27T08:00:00.000Z',
-    description: 'Momentul generării răspunsului (ISO)',
+    example: { path: '/auth/login', timestamp: '2026-07-27T08:00:00.000Z' },
+    description: 'Meta informații utile pentru client',
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      path: { type: 'string' },
+      timestamp: { type: 'string' },
+    },
   })
-  timestamp: string;
-
-  @ApiProperty({ example: '/auth/login', description: 'Path-ul request-ului' })
-  path: string;
+  meta: { path: string; timestamp: string };
 }

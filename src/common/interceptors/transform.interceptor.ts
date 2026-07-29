@@ -4,6 +4,12 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { SuccessResponse } from '../interfaces';
 
+/**
+ * Înfășoară orice răspuns de succes în envelope-ul `SuccessResponse`:
+ * `{ success: true, statusCode, data }`.
+ *
+ * Metadatele de debug (`meta.path`, `meta.timestamp`) sunt incluse și în succes.
+ */
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor<T, SuccessResponse<T>> {
   intercept(context: ExecutionContext, next: CallHandler<T>): Observable<SuccessResponse<T>> {
@@ -15,8 +21,10 @@ export class TransformInterceptor<T> implements NestInterceptor<T, SuccessRespon
       map((data: T) => ({
         success: true,
         statusCode: response.statusCode,
-        timestamp: new Date().toISOString(),
-        path: request.url,
+        meta: {
+          path: request.url,
+          timestamp: new Date().toISOString(),
+        },
         data,
       })),
     );

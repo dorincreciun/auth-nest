@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth';
 import { RedisModule } from './modules/redis';
 import { SessionModule } from './modules/session';
 import { MailerModule } from './modules/mailer';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -54,5 +55,6 @@ import { MailerModule } from './modules/mailer';
       useClass: ThrottlerGuard,
     },
   ],
+  controllers: [AppController],
 })
 export class AppModule {}

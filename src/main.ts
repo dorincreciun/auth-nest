@@ -21,6 +21,7 @@ import { RedisService } from './modules/redis';
 /* Bootstrap setup files */
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { SWAGGER_SESSION_AUTH } from './common/swagger';
+import { validationExceptionFactory } from './common/factories';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -37,12 +38,13 @@ async function bootstrap() {
     credentials: true,
   });
   app.useGlobalInterceptors(new TransformInterceptor());
-  app.useGlobalFilters(new PrismaExceptionFilter(), new HttpExceptionFilter());
+  app.useGlobalFilters(new HttpExceptionFilter(), new PrismaExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
       whitelist: true,
       forbidNonWhitelisted: true,
+      exceptionFactory: validationExceptionFactory,
     }),
   );
 

@@ -1,7 +1,27 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
-import { ErrorResponse } from '../interfaces';
+import type { ErrorDetails, ErrorResponse } from '../interfaces';
+
+/**
+ * Excepțiile Prisma tratate de acest filtru.
+ */
+type PrismaException =
+  | Prisma.PrismaClientKnownRequestError
+  | Prisma.PrismaClientValidationError
+  | Prisma.PrismaClientInitializationError
+  | Prisma.PrismaClientUnknownRequestError
+  | Prisma.PrismaClientRustPanicError;
+
+/**
+ * Rezultatul intermediar al maparii unei excepții Prisma, înainte de a fi
+ * asamblat în `ErrorResponse`.
+ */
+interface MappedPrismaError {
+  statusCode: number;
+  message: string;
+  details: ErrorDetails;
+}
 
 @Catch(
   Prisma.PrismaClientKnownRequestError,
@@ -31,43 +51,38 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 
   private readonly logger = new Logger(PrismaExceptionFilter.name);
 
-  catch(
-    exception:
-      | Prisma.PrismaClientKnownRequestError
-      | Prisma.PrismaClientValidationError
-      | Prisma.PrismaClientInitializationError
-      | Prisma.PrismaClientUnknownRequestError
-      | Prisma.PrismaClientRustPanicError,
-    host: ArgumentsHost,
-  ) {
+  catch(exception: PrismaException, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const { statusCode, message, error } = this.mapException(exception);
+    const { statusCode, message, details } = this.mapException(exception);
 
-    this.logger.error(
-      `[${request.method}] ${request.url} -> ${message.join(', ')}`,
-      exception.stack,
-    );
+    this.logger.error(`[${request.method}] ${request.url} -> ${message}`, exception.stack);
 
     const body: ErrorResponse = {
       success: false,
       statusCode,
-      timestamp: new Date().toISOString(),
-      path: request.url,
       message,
-      error,
+      details,
+      meta: {
+        path: request.url,
+        timestamp: new Date().toISOString(),
+      },
     };
 
     response.status(statusCode).json(body);
   }
 
-  private mapException(exception: unknown): {
-    statusCode: number;
-    message: string[];
-    error: string;
-  } {
+  /**
+   * Rutează excepția Prisma către handler-ul potrivit, în funcție de tipul
+   * ei concret (`instanceof`), și întoarce o formă intermediară comună
+   * (`MappedPrismaError`) pentru asamblarea răspunsului final.
+   *
+   * @param exception - Excepția Prisma prinsă de filtru.
+   * @returns Codul de status, mesajul și detaliile corespunzătoare erorii.
+   */
+  private mapException(exception: PrismaException): MappedPrismaError {
     const { MESSAGES } = PrismaExceptionFilter;
 
     if (exception instanceof Prisma.PrismaClientKnownRequestError) {
@@ -77,113 +92,149 @@ export class PrismaExceptionFilter implements ExceptionFilter {
     if (exception instanceof Prisma.PrismaClientValidationError) {
       return {
         statusCode: HttpStatus.BAD_REQUEST,
-        message: [MESSAGES.VALIDATION_ERROR],
-        error: 'VALIDATION_ERROR',
+        message: MESSAGES.VALIDATION_ERROR,
+        details: null,
       };
     }
 
     if (exception instanceof Prisma.PrismaClientInitializationError) {
       return {
         statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-        message: [MESSAGES.DB_UNAVAILABLE],
-        error: exception.errorCode ?? 'INIT_ERROR',
+        message: MESSAGES.DB_UNAVAILABLE,
+        details: null,
       };
     }
 
     if (exception instanceof Prisma.PrismaClientRustPanicError) {
       return {
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: [MESSAGES.RUST_PANIC],
-        error: 'RUST_PANIC',
+        message: MESSAGES.RUST_PANIC,
+        details: null,
       };
     }
 
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: [MESSAGES.UNKNOWN_REQUEST_ERROR],
-      error: 'UNKNOWN_REQUEST_ERROR',
+      message: MESSAGES.UNKNOWN_REQUEST_ERROR,
+      details: null,
     };
   }
 
-  private handleKnownRequestError(exception: Prisma.PrismaClientKnownRequestError): {
-    statusCode: number;
-    message: string[];
-    error: string;
-  } {
+  /**
+   * Tratează specific `PrismaClientKnownRequestError`, mapând fiecare cod
+   * de eroare Prisma (`P2002`, `P2025` etc.) la un status HTTP și un mesaj
+   * localizat. Pentru erorile legate de un câmp anume (`P2002`, `P2003`,
+   * `P2000`, `P2011`), numele câmpului e extras din `exception.meta.target`
+   * și inclus atât în mesaj, cât și în `details`.
+   *
+   * @param exception - Eroarea Prisma cu cod cunoscut (`PrismaClientKnownRequestError`).
+   * @returns Codul de status, mesajul și detaliile corespunzătoare codului de eroare.
+   */
+  private handleKnownRequestError(
+    exception: Prisma.PrismaClientKnownRequestError,
+  ): MappedPrismaError {
     const { MESSAGES } = PrismaExceptionFilter;
-    const target = exception.meta?.target as string[] | string | undefined;
-    const fieldName = Array.isArray(target) ? target.join(', ') : target;
+    const fieldName = this.extractFieldName(exception.meta?.target);
+    const fieldDetails = this.buildFieldDetails(fieldName, exception.code);
 
     switch (exception.code) {
       case 'P2002':
         return {
           statusCode: HttpStatus.CONFLICT,
-          message: [MESSAGES.P2002],
-          error: exception.code,
+          message: MESSAGES.P2002,
+          details: fieldDetails,
         };
 
       case 'P2025':
         return {
           statusCode: HttpStatus.NOT_FOUND,
-          message: [MESSAGES.P2025],
-          error: exception.code,
+          message: MESSAGES.P2025,
+          details: null,
         };
 
       case 'P2003':
         return {
           statusCode: HttpStatus.BAD_REQUEST,
-          message: [MESSAGES.P2003(fieldName)],
-          error: exception.code,
+          message: MESSAGES.P2003(fieldName),
+          details: fieldDetails,
         };
 
       case 'P2014':
         return {
           statusCode: HttpStatus.BAD_REQUEST,
-          message: [MESSAGES.P2014],
-          error: exception.code,
+          message: MESSAGES.P2014,
+          details: null,
         };
 
       case 'P2000':
         return {
           statusCode: HttpStatus.BAD_REQUEST,
-          message: [MESSAGES.P2000(fieldName)],
-          error: exception.code,
+          message: MESSAGES.P2000(fieldName),
+          details: fieldDetails,
         };
 
       case 'P2020':
         return {
           statusCode: HttpStatus.BAD_REQUEST,
-          message: [MESSAGES.P2020],
-          error: exception.code,
+          message: MESSAGES.P2020,
+          details: null,
         };
 
       case 'P2011':
         return {
           statusCode: HttpStatus.BAD_REQUEST,
-          message: [MESSAGES.P2011(fieldName)],
-          error: exception.code,
+          message: MESSAGES.P2011(fieldName),
+          details: fieldDetails,
         };
 
       case 'P2010':
         return {
           statusCode: HttpStatus.BAD_REQUEST,
-          message: [MESSAGES.P2010],
-          error: exception.code,
+          message: MESSAGES.P2010,
+          details: null,
         };
 
       case 'P2024':
         return {
           statusCode: HttpStatus.GATEWAY_TIMEOUT,
-          message: [MESSAGES.P2024],
-          error: exception.code,
+          message: MESSAGES.P2024,
+          details: null,
         };
 
       default:
         return {
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: [MESSAGES.DEFAULT],
-          error: exception.code,
+          message: MESSAGES.DEFAULT,
+          details: null,
         };
     }
+  }
+
+  /**
+   * Extrage numele câmpului (sau câmpurilor) implicat într-o eroare Prisma
+   * din `exception.meta.target`, care poate fi fie `string`, fie `string[]`
+   * (ex: la constrângeri unice compuse din mai multe coloane).
+   *
+   * @param target - Valoarea `meta.target` din excepția Prisma.
+   * @returns Numele câmpului/câmpurilor, unite prin virgulă, sau `undefined`.
+   */
+  private extractFieldName(target: unknown): string | undefined {
+    if (Array.isArray(target)) {
+      return target.join(', ');
+    }
+
+    return typeof target === 'string' ? target : undefined;
+  }
+
+  /**
+   * Construiește `details` în același format ca validarea DTO:
+   * `{ email: ["P2002"] }`.
+   */
+  private buildFieldDetails(fieldName: string | undefined, code: string): ErrorDetails {
+    if (!fieldName) {
+      return null;
+    }
+
+    return { [fieldName]: [code] };
   }
 }
