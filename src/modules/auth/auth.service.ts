@@ -8,13 +8,13 @@ import { User } from '@prisma/client';
 import ms from 'ms';
 import { HashService } from '../hash';
 import { MailerService } from '../mailer';
-import { CreateUserRequestDto, UsersService } from '../users';
+import { CreateUserPayloadDto, UsersService } from '../users';
 import {
-  ForgotPasswordRequestDto,
-  LoginRequestDto,
-  MessageResponseDto,
-  ResetPasswordRequestDto,
-  TokenSentResponseDto,
+  ForgotPasswordPayloadDto,
+  LoginPayloadDto,
+  MessageDataDto,
+  ResetPasswordPayloadDto,
+  TokenSentDataDto,
 } from './dto';
 import { TokenService } from './token.service';
 
@@ -46,7 +46,7 @@ export class AuthService {
    * Înregistrează un utilizator nou în sistem.
    * Validează unicitatea emailului, realizează hash-ul parolei și salvează datele în baza de date.
    */
-  public async register(dto: CreateUserRequestDto): Promise<User> {
+  public async register(dto: CreateUserPayloadDto): Promise<User> {
     const userExists = await this.userService.exists(dto.email);
     const passwordHash = await this.hashService.hash(dto.password);
 
@@ -64,7 +64,7 @@ export class AuthService {
    * Autentifică un utilizator existent.
    * Verifică existența adresei de email și corectitudinea parolei introduse.
    */
-  public async login(dto: LoginRequestDto): Promise<User> {
+  public async login(dto: LoginPayloadDto): Promise<User> {
     const user = await this.userService.findByEmail(dto.email);
     const passwordHash = user?.password ?? this.hashService.getDummyHash();
     const isPasswordMatching = await this.hashService.compare(dto.password, passwordHash);
@@ -80,7 +80,7 @@ export class AuthService {
    * Trimite sau retrimite codul de verificare pe email.
    * Returnează mesajul de succes și data de expirare a tokenului pentru countdown-ul din frontend.
    */
-  public async sendVerificationEmail(user: User): Promise<TokenSentResponseDto> {
+  public async sendVerificationEmail(user: User): Promise<TokenSentDataDto> {
     const { isVerified, id, email } = user;
 
     if (isVerified) {
@@ -104,7 +104,7 @@ export class AuthService {
   /**
    * Confirmă adresa de email folosind codul introdus de utilizator.
    */
-  public async confirmEmail(user: User, token: string): Promise<MessageResponseDto> {
+  public async confirmEmail(user: User, token: string): Promise<MessageDataDto> {
     const { isVerified, id, email } = user;
 
     if (isVerified) {
@@ -123,7 +123,7 @@ export class AuthService {
    * Pornește fluxul de resetare a parolei.
    * Răspunsul e identic indiferent dacă emailul există, ca să nu permită enumerarea conturilor.
    */
-  public async forgotPassword(dto: ForgotPasswordRequestDto): Promise<TokenSentResponseDto> {
+  public async forgotPassword(dto: ForgotPasswordPayloadDto): Promise<TokenSentDataDto> {
     const user = await this.userService.findByEmail(dto.email);
     const fallbackExpiresAt = new Date(Date.now() + ms(AuthService.PASSWORD_RESET_TOKEN_TTL));
 
@@ -159,7 +159,7 @@ export class AuthService {
     }
   }
 
-  public async resetPassword(dto: ResetPasswordRequestDto): Promise<MessageResponseDto> {
+  public async resetPassword(dto: ResetPasswordPayloadDto): Promise<MessageDataDto> {
     const { email, newPassword, token } = dto;
 
     await this.tokenService.verifyTokenByEmail(email, token, 'RESET_PASSWORD');

@@ -11,28 +11,25 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { type User } from '@prisma/client';
-import { ErrorResponseDto } from '../../common/dto';
 import { CurrentUser } from '../../common/decorators';
-import { ApiSessionAuth } from '../../common/swagger';
+import { ApiSessionAuth, ApiSuccessResponse, ErrorResponseDto } from '../../common/swagger';
 import { extractDeviceData, isProduction } from '../../common/utils';
-import { CreateUserRequestDto, UserMapper } from '../users';
+import { UserMapper } from '../users';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators';
 import {
-  AuthUserApiResponseDto,
-  AuthUserResponseDto,
-  ConfirmEmailRequestDto,
-  ForgotPasswordRequestDto,
-  LoginRequestDto,
-  MessageApiResponseDto,
-  MessageResponseDto,
-  ResetPasswordRequestDto,
-  TokenSentApiResponseDto,
-  TokenSentResponseDto,
+  AuthUserDataDto,
+  ConfirmEmailPayloadDto,
+  ForgotPasswordPayloadDto,
+  LoginPayloadDto,
+  MessageDataDto,
+  RegisterPayloadDto,
+  ResetPasswordPayloadDto,
+  TokenSentDataDto,
 } from './dto';
 
 @ApiTags('auth')
@@ -61,21 +58,21 @@ export class AuthController {
   @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 / oră
   @HttpCode(HttpStatus.CREATED)
   @Post('register')
-  @ApiResponse({
+  @ApiOperation({ summary: 'Înregistrare utilizator nou' })
+  @ApiSuccessResponse(AuthUserDataDto, {
     status: 201,
     description: 'Utilizator creat și sesiune inițiată',
-    type: AuthUserApiResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 409, description: 'Conflict la înregistrare', type: ErrorResponseDto })
+  @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
   public async register(
     @Req() req: Request,
-    @Body() dto: CreateUserRequestDto,
-  ): Promise<AuthUserResponseDto> {
+    @Body() dto: RegisterPayloadDto,
+  ): Promise<AuthUserDataDto> {
     const user = await this.authService.register(dto);
     await this.startSession(req, user);
-    return { user: UserMapper.toResponseDto(user) };
+    return { user: UserMapper.toDto(user) };
   }
 
   /**
@@ -88,21 +85,18 @@ export class AuthController {
   @Throttle({ short: { limit: 5, ttl: 60 * 1000 } }) // 5 / minut
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  @ApiResponse({
+  @ApiOperation({ summary: 'Autentificare cu email și parolă' })
+  @ApiSuccessResponse(AuthUserDataDto, {
     status: 200,
     description: 'Autentificare reușită',
-    type: AuthUserApiResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 401, description: 'Credențiale invalide', type: ErrorResponseDto })
+  @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
-  public async login(
-    @Req() req: Request,
-    @Body() dto: LoginRequestDto,
-  ): Promise<AuthUserResponseDto> {
+  public async login(@Req() req: Request, @Body() dto: LoginPayloadDto): Promise<AuthUserDataDto> {
     const user = await this.authService.login(dto);
     await this.startSession(req, user);
-    return { user: UserMapper.toResponseDto(user) };
+    return { user: UserMapper.toDto(user) };
   }
 
   /**
@@ -116,16 +110,16 @@ export class AuthController {
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('logout')
-  @ApiResponse({
+  @ApiOperation({ summary: 'Deconectare (distruge sesiunea)' })
+  @ApiSuccessResponse(MessageDataDto, {
     status: 200,
     description: 'Deconectare reușită',
-    type: MessageApiResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
   public async logout(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<MessageResponseDto> {
+  ): Promise<MessageDataDto> {
     await this.destroySession(req);
 
     const sessionCookieName = this.config.getOrThrow<string>('SESSION_NAME');
@@ -150,18 +144,18 @@ export class AuthController {
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Get('me')
-  @ApiResponse({
+  @ApiOperation({ summary: 'Profilul utilizatorului autentificat' })
+  @ApiSuccessResponse(AuthUserDataDto, {
     status: 200,
-    description: 'Profilul utilizatorului autentificat',
-    type: AuthUserApiResponseDto,
+    description: 'Profilul utilizatorului din sesiune',
   })
   @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
-  public getMe(@CurrentUser() user: User): AuthUserResponseDto {
+  public getMe(@CurrentUser() user: User): AuthUserDataDto {
     if (!user) {
       throw new UnauthorizedException(AuthController.MESSAGES.USER_NOT_AUTHENTICATED);
     }
 
-    return { user: UserMapper.toResponseDto(user) };
+    return { user: UserMapper.toDto(user) };
   }
 
   /**
@@ -174,10 +168,10 @@ export class AuthController {
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/send')
-  @ApiResponse({
+  @ApiOperation({ summary: 'Trimite codul de verificare a emailului' })
+  @ApiSuccessResponse(TokenSentDataDto, {
     status: 200,
     description: 'Cod de verificare trimis pe email',
-    type: TokenSentApiResponseDto,
   })
   @ApiResponse({
     status: 400,
@@ -186,12 +180,12 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
-  public emailVerifySend(@CurrentUser() user: User): Promise<TokenSentResponseDto> {
+  public emailVerifySend(@CurrentUser() user: User): Promise<TokenSentDataDto> {
     return this.authService.sendVerificationEmail(user);
   }
 
   /**
-   * Primite un cod de 6 cifre de la client.
+   * Primește un cod de 6 cifre de la client.
    * - Folosit pentru a valida că adresa de e-mail introdusă la înregistrare este reală.
    */
   @SkipThrottle({ short: true, long: true })
@@ -200,18 +194,19 @@ export class AuthController {
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/confirm')
-  @ApiResponse({
+  @ApiOperation({ summary: 'Confirmă emailul cu codul primit' })
+  @ApiSuccessResponse(MessageDataDto, {
     status: 200,
     description: 'Email confirmat cu succes',
-    type: MessageApiResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Cod invalid / expirat', type: ErrorResponseDto })
   @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
+  @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
   public confirmEmail(
     @CurrentUser() user: User,
-    @Body() dto: ConfirmEmailRequestDto,
-  ): Promise<MessageResponseDto> {
+    @Body() dto: ConfirmEmailPayloadDto,
+  ): Promise<MessageDataDto> {
     return this.authService.confirmEmail(user, dto.token);
   }
 
@@ -224,14 +219,14 @@ export class AuthController {
   @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 / oră
   @HttpCode(HttpStatus.OK)
   @Post('password/forgot')
-  @ApiResponse({
+  @ApiOperation({ summary: 'Solicită resetarea parolei' })
+  @ApiSuccessResponse(TokenSentDataDto, {
     status: 200,
     description: 'Răspuns generic (email trimis dacă adresa există)',
-    type: TokenSentApiResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Date invalide', type: ErrorResponseDto })
+  @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
-  public forgotPassword(@Body() dto: ForgotPasswordRequestDto): Promise<TokenSentResponseDto> {
+  public forgotPassword(@Body() dto: ForgotPasswordPayloadDto): Promise<TokenSentDataDto> {
     return this.authService.forgotPassword(dto);
   }
 
@@ -244,14 +239,15 @@ export class AuthController {
   @Throttle({ medium: { limit: 5, ttl: 5 * 60 * 1000 } }) // 5 / 5 minute
   @HttpCode(HttpStatus.OK)
   @Post('password/reset')
-  @ApiResponse({
+  @ApiOperation({ summary: 'Resetează parola cu codul primit pe email' })
+  @ApiSuccessResponse(MessageDataDto, {
     status: 200,
     description: 'Parola a fost resetată',
-    type: MessageApiResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Cod invalid / date invalide', type: ErrorResponseDto })
+  @ApiResponse({ status: 400, description: 'Cod invalid / expirat', type: ErrorResponseDto })
+  @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
-  public resetPassword(@Body() dto: ResetPasswordRequestDto): Promise<MessageResponseDto> {
+  public resetPassword(@Body() dto: ResetPasswordPayloadDto): Promise<MessageDataDto> {
     return this.authService.resetPassword(dto);
   }
 

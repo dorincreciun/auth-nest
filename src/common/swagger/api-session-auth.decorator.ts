@@ -5,6 +5,6 @@ import { ApiCookieAuth } from '@nestjs/swagger';
 export const SWAGGER_SESSION_AUTH = 'session';
 
 /** Marchează endpoint-ul ca protejat de cookie-ul de sesiune (Swagger Authorize). */
-export function ApiSessionAuth() {
+export function ApiSessionAuth(): MethodDecorator & ClassDecorator {
   return applyDecorators(ApiCookieAuth(SWAGGER_SESSION_AUTH));
 }
