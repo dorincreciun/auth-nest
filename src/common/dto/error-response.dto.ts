@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ErrorResponseDto {
-  @ApiProperty({ example: false })
+  @ApiProperty({ enum: [false], example: false, description: 'Indică un răspuns de eroare' })
   success: false;
 
   @ApiProperty({ example: 422 })

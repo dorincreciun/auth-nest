@@ -5,7 +5,7 @@ import { ApiProperty } from '@nestjs/swagger';
  * Nu se folosește singur — extinde-l în DTO-uri concrete de tip `*ApiResponseDto`.
  */
 export class ApiSuccessEnvelopeDto {
-  @ApiProperty({ example: true, description: 'Indică un răspuns de succes' })
+  @ApiProperty({ enum: [true], example: true, description: 'Indică un răspuns de succes' })
   success: true;
 
   @ApiProperty({ example: 200, description: 'Codul HTTP al răspunsului' })
