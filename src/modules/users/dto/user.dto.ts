@@ -32,16 +32,4 @@ export class UserDto {
    * @example false
    */
   isVerified: boolean;
-
-  /**
-   * Prenumele utilizatorului
-   * @example Ion
-   */
-  firstName: string | null;
-
-  /**
-   * Numele de familie al utilizatorului
-   * @example Popescu
-   */
-  lastName: string | null;
 }
