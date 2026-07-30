@@ -15,15 +15,33 @@ model User {
   id         String   @id @default(uuid())
   email      String   @unique
   password   String
-  firstName  String?  @map("first_name")
-  lastName   String?  @map("last_name")
   isVerified Boolean  @default(false) @map("is_verified")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  tokens VerificationToken[]
+  tokens  VerificationToken[]
+  profile UserProfile?
 
   @@map("users")
+}
+
+model UserProfile {
+  id        String  @id @default(uuid())
+  firstName String? @map("first_name")
+  lastName  String? @map("last_name")
+  avatarUrl String? @map("avatar_url")
+  location  String? @map("location")
+  jobTitle  String? @map("job_title")
+  bio       String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([id, userId])
+  @@map("user_profiles")
 }
 
 model VerificationToken {
