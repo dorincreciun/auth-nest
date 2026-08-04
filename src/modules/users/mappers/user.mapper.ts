@@ -3,7 +3,7 @@ import { UserDto, UserProfileDto } from '../dto';
 import { UserWithProfile } from '../types/user-with-profile';
 
 /**
- * Mapează entitatea Prisma `User` în DTO-ul public expus clientului.
+ * Mapează entitatea Prisma `User` / `UserProfile` în DTO-urile publice.
  */
 export class UserMapper {
   /** User fără relația profile încărcată → `profile: null`. */
@@ -22,15 +22,12 @@ export class UserMapper {
   public static toDtoWithProfile(user: UserWithProfile): UserDto {
     return {
       ...this.toDto(user),
-      profile: this.toProfileDto(user.profile),
+      profile: user.profile ? this.toProfileDto(user.profile) : null,
     };
   }
 
-  private static toProfileDto(profile: UserProfile | null): UserProfileDto | null {
-    if (!profile) {
-      return null;
-    }
-
+  /** Profil public (fără id / userId / timestamps interne). */
+  public static toProfileDto(profile: UserProfile): UserProfileDto {
     return {
       firstName: profile.firstName,
       lastName: profile.lastName,

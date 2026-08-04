@@ -5,10 +5,12 @@ import { HashModule } from '../hash';
 import { UsersModule } from '../users';
 import { TokenService } from './token.service';
 import { MailerModule } from '../mailer';
+import { AuthGuard } from './guards';
 
 @Module({
   imports: [HashModule, UsersModule, MailerModule],
   controllers: [AuthController],
-  providers: [AuthService, TokenService],
+  providers: [AuthService, TokenService, AuthGuard],
+  exports: [AuthGuard],
 })
 export class AuthModule {}

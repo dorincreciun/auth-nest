@@ -70,9 +70,10 @@ export class UsersService {
     userId: string,
     data: UpdateUserProfilePayloadDto,
   ): Promise<UserProfile> {
-    return this.prismaService.userProfile.update({
+    return this.prismaService.userProfile.upsert({
       where: { userId },
-      data,
+      create: { userId, ...data },
+      update: data,
     });
   }
 }

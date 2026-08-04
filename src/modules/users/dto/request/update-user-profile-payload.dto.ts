@@ -1,9 +1,12 @@
-import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { AtLeastOneProperty } from '../../../../common/decorators';
 
 /**
  * Body pentru actualizarea profilului utilizatorului autentificat.
- * Cel puțin un câmp ar trebui trimis (validarea „at least one” pe endpoint, dacă e cazul).
+ * Cel puțin un câmp trebuie trimis.
+ * Avatarul se actualizează separat (upload), nu prin acest endpoint.
  */
+@AtLeastOneProperty({ message: 'Trebuie să completezi cel puțin un câmp din profil!' })
 export class UpdateUserProfilePayloadDto {
   /**
    * Prenumele
@@ -22,14 +25,6 @@ export class UpdateUserProfilePayloadDto {
   @IsString({ message: 'Numele trebuie să fie un text' })
   @MaxLength(50, { message: 'Numele nu poate depăși 50 de caractere' })
   lastName?: string;
-
-  /**
-   * URL-ul avatarului
-   * @example https://cdn.example.com/avatars/ion.png
-   */
-  @IsOptional()
-  @IsUrl({}, { message: 'URL-ul avatarului nu este valid' })
-  avatarUrl?: string;
 
   /**
    * Locația (oraș / țară)
