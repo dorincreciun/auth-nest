@@ -18,7 +18,7 @@ import { type User } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators';
 import { ApiSessionAuth, ApiSuccessResponse, ErrorResponseDto } from '../../common/swagger';
 import { extractDeviceData, isProduction } from '../../common/utils';
-import { UserMapper } from '../users';
+import { UserDto, UserMapper, UserProfileDto, UsersService } from '../users';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators';
 import {
@@ -31,6 +31,8 @@ import {
   ResetPasswordPayloadDto,
   TokenSentDataDto,
 } from './dto';
+
+const AUTH_USER_EXTRA_MODELS = [UserDto, UserProfileDto] as const;
 
 @ApiTags('auth')
 @Controller('auth')
@@ -45,6 +47,7 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly usersService: UsersService,
     private readonly config: ConfigService,
   ) {}
 
@@ -58,10 +61,16 @@ export class AuthController {
   @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 / oră
   @HttpCode(HttpStatus.CREATED)
   @Post('register')
-  @ApiOperation({ summary: 'Înregistrare utilizator nou' })
+  @ApiOperation({
+    summary: 'Înregistrare utilizator nou',
+    description:
+      'Creează contul, inițiază sesiunea și returnează userul public. ' +
+      '`user.profile` este `null` aici (profilul se citește pe GET /auth/me).',
+  })
   @ApiSuccessResponse(AuthUserDataDto, {
     status: 201,
-    description: 'Utilizator creat și sesiune inițiată',
+    description: 'Utilizator creat și sesiune inițiată (profile: null)',
+    extraModels: [...AUTH_USER_EXTRA_MODELS],
   })
   @ApiResponse({ status: 409, description: 'Conflict la înregistrare', type: ErrorResponseDto })
   @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
@@ -85,10 +94,16 @@ export class AuthController {
   @Throttle({ short: { limit: 5, ttl: 60 * 1000 } }) // 5 / minut
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  @ApiOperation({ summary: 'Autentificare cu email și parolă' })
+  @ApiOperation({
+    summary: 'Autentificare cu email și parolă',
+    description:
+      'Validează credențialele, regenerază sesiunea și returnează userul public. ' +
+      '`user.profile` este `null` aici (profilul se citește pe GET /auth/me).',
+  })
   @ApiSuccessResponse(AuthUserDataDto, {
     status: 200,
-    description: 'Autentificare reușită',
+    description: 'Autentificare reușită (profile: null)',
+    extraModels: [...AUTH_USER_EXTRA_MODELS],
   })
   @ApiResponse({ status: 401, description: 'Credențiale invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
@@ -144,18 +159,26 @@ export class AuthController {
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Get('me')
-  @ApiOperation({ summary: 'Profilul utilizatorului autentificat' })
+  @ApiOperation({
+    summary: 'Profilul utilizatorului autentificat',
+    description:
+      'Returnează contul curent împreună cu profilul nested (`user.profile`). ' +
+      'Spre deosebire de register/login, aici relația `profile` este încărcată din DB.',
+  })
   @ApiSuccessResponse(AuthUserDataDto, {
     status: 200,
-    description: 'Profilul utilizatorului din sesiune',
+    description: 'Utilizator + profil nested din sesiune',
+    extraModels: [...AUTH_USER_EXTRA_MODELS],
   })
   @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
-  public getMe(@CurrentUser() user: User): AuthUserDataDto {
+  public async getMe(@CurrentUser('id') userId: string): Promise<AuthUserDataDto> {
+    const user = await this.usersService.findByIdWithProfile(userId);
+
     if (!user) {
       throw new UnauthorizedException(AuthController.MESSAGES.USER_NOT_AUTHENTICATED);
     }
 
-    return { user: UserMapper.toDto(user) };
+    return { user: UserMapper.toDtoWithProfile(user) };
   }
 
   /**

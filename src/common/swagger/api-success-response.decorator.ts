@@ -4,6 +4,8 @@ import { ApiExtraModels, ApiResponse, getSchemaPath } from '@nestjs/swagger';
 interface ApiSuccessResponseOptions {
   status?: number;
   description?: string;
+  /** Modele nested care trebuie înregistrate în OpenAPI (ex. UserDto, UserProfileDto). */
+  extraModels?: Type<unknown>[];
 }
 
 /**
@@ -20,7 +22,7 @@ export function ApiSuccessResponse<TData extends Type<unknown>>(
   const { status = 200, description } = options;
 
   return applyDecorators(
-    ApiExtraModels(dataDto),
+    ApiExtraModels(dataDto, ...(options.extraModels ?? [])),
     ApiResponse({
       status,
       description,

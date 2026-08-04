@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { User, UserProfile } from '@prisma/client';
 import { PrismaService } from '../prisma';
-import { CreateUserPayloadDto, UpdateUserProfileDto } from './dto';
+import { CreateUserPayloadDto, UpdateUserProfilePayloadDto } from './dto';
 import { UpdateUser } from './types';
+import { UserWithProfile } from './types/user-with-profile';
 
 @Injectable()
 export class UsersService {
@@ -24,6 +25,13 @@ export class UsersService {
   public async findById(id: string): Promise<User | null> {
     return this.prismaService.user.findUnique({
       where: { id },
+    });
+  }
+
+  public async findByIdWithProfile(id: string): Promise<UserWithProfile | null> {
+    return this.prismaService.user.findUnique({
+      where: { id },
+      include: { profile: true },
     });
   }
 
@@ -58,7 +66,10 @@ export class UsersService {
     });
   }
 
-  public async updateProfile(userId: string, data: UpdateUserProfileDto): Promise<UserProfile> {
+  public async updateProfile(
+    userId: string,
+    data: UpdateUserProfilePayloadDto,
+  ): Promise<UserProfile> {
     return this.prismaService.userProfile.update({
       where: { userId },
       data,

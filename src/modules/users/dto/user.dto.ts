@@ -1,8 +1,19 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { UserProfileDto } from './user-profile.dto';
+
 /**
  * Reprezentarea publică a unui utilizator (fără câmpuri sensibile).
- * Este forma expusă către client în toate răspunsurile care conțin un user.
+ *
+ * - La `GET /auth/me`: `profile` este populat (sau `null` dacă lipsește în DB).
+ * - La `register` / `login`: `profile` este `null` (nu se încarcă relația).
  */
 export class UserDto {
+  /**
+   * Identificatorul unic al utilizatorului (UUID)
+   * @example 123e4567-e89b-12d3-a456-426614174000
+   */
+  id: string;
+
   /**
    * Adresa de email a utilizatorului
    * @example test@gmail.com
@@ -10,10 +21,10 @@ export class UserDto {
   email: string;
 
   /**
-   * Identificatorul unic al utilizatorului (UUID)
-   * @example 123e4567-e89b-12d3-a456-426614174000
+   * Dacă adresa de email a fost confirmată
+   * @example false
    */
-  id: string;
+  isVerified: boolean;
 
   /**
    * Data și ora la care a fost creat contul
@@ -28,8 +39,13 @@ export class UserDto {
   updatedAt: Date;
 
   /**
-   * Dacă adresa de email a fost confirmată
-   * @example false
+   * Profilul public nested. `null` când relația nu a fost încărcată
+   * (ex. login/register) sau când userul nu are încă rând în `user_profiles`.
    */
-  isVerified: boolean;
+  @ApiProperty({
+    type: UserProfileDto,
+    nullable: true,
+    description: 'Profilul public nested. null pe login/register; populat pe GET /auth/me.',
+  })
+  profile: UserProfileDto | null;
 }
