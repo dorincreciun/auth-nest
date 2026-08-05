@@ -8,7 +8,8 @@ import { User } from '@prisma/client';
 import ms from 'ms';
 import { HashService } from '../hash';
 import { MailerService } from '../mailer';
-import { CreateUserPayloadDto, UsersService } from '../users';
+import { CreateUserPayloadDto } from '../users/dto';
+import { UsersService } from '../users/users.service';
 import {
   ForgotPasswordPayloadDto,
   LoginPayloadDto,

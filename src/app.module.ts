@@ -12,6 +12,8 @@ import { AuthModule } from './modules/auth';
 import { RedisModule } from './modules/redis';
 import { SessionModule } from './modules/session';
 import { MailerModule } from './modules/mailer';
+import { CloudinaryModule } from './modules/cloudinary';
+import { FileModule } from './modules/file';
 import { AppController } from './app.controller';
 
 @Module({
@@ -43,6 +45,8 @@ import { AppController } from './app.controller';
     }),
     PrismaModule,
     HashModule,
+    FileModule,
+    CloudinaryModule,
     UsersModule,
     AuthModule,
     RedisModule,

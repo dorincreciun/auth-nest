@@ -68,7 +68,7 @@ export class UsersService {
 
   public async updateProfile(
     userId: string,
-    data: UpdateUserProfilePayloadDto,
+    data: UpdateUserProfilePayloadDto & { avatarUrl?: string },
   ): Promise<UserProfile> {
     return this.prismaService.userProfile.upsert({
       where: { userId },

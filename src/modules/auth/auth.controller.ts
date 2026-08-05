@@ -18,7 +18,9 @@ import { type User } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators';
 import { ApiSessionAuth, ApiSuccessResponse, ErrorResponseDto } from '../../common/swagger';
 import { extractDeviceData, isProduction } from '../../common/utils';
-import { UserDto, UserMapper, UserProfileDto, UsersService } from '../users';
+import { UserDto, UserProfileDto } from '../users/dto';
+import { UserMapper } from '../users/mappers';
+import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators';
 import {
