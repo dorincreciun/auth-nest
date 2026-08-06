@@ -4,11 +4,13 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   InternalServerErrorException,
   Post,
   Req,
   Res,
   UnauthorizedException,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -49,6 +51,7 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
+    @Inject(forwardRef(() => UsersService))
     private readonly usersService: UsersService,
     private readonly config: ConfigService,
   ) {}

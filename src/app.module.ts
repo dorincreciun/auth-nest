@@ -7,8 +7,8 @@ import ms, { StringValue } from 'ms';
 /* Modules */
 import { PrismaModule } from './modules/prisma';
 import { HashModule } from './modules/hash';
-import { UsersModule } from './modules/users';
-import { AuthModule } from './modules/auth';
+import { UsersModule } from './modules/users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { RedisModule } from './modules/redis';
 import { SessionModule } from './modules/session';
 import { MailerModule } from './modules/mailer';

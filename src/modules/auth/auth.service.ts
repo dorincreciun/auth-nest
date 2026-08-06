@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   UnauthorizedException,
+  forwardRef,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
 import ms from 'ms';
@@ -38,6 +40,7 @@ export class AuthService {
 
   public constructor(
     private hashService: HashService,
+    @Inject(forwardRef(() => UsersService))
     private userService: UsersService,
     private tokenService: TokenService,
     private mailerService: MailerService,

@@ -1,4 +1,11 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+  forwardRef,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { UsersService } from '../../users/users.service';
 
@@ -9,7 +16,10 @@ export class AuthGuard implements CanActivate {
     USER_NOT_FOUND: 'Utilizatorul nu a fost găsit',
   } as const;
 
-  public constructor(private readonly usersService: UsersService) {}
+  public constructor(
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
+  ) {}
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
