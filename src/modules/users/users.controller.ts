@@ -117,7 +117,7 @@ export class UsersController {
     @CurrentUser('id') userId: string,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<UserProfileDataDto> {
-    const avatarFile = await this.fileService.prepareAvatarFile(file);
+    const avatarFile = this.fileService.assertAvatarFile(file);
     const existingProfile = await this.usersService.getProfile(userId);
     const previousPublicId = this.cloudinaryService.extractPublicId(existingProfile?.avatarUrl);
 

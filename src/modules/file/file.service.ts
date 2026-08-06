@@ -66,29 +66,6 @@ export class FileService {
     );
   }
 
-  /**
-   * Pregătește avatarul: validare + conversie WebP (dacă nu e deja WebP).
-   */
-  public async prepareAvatarFile(
-    file: Express.Multer.File | undefined,
-  ): Promise<Express.Multer.File> {
-    const avatar = this.assertAvatarFile(file);
-
-    if (avatar.mimetype === 'image/webp') {
-      return avatar;
-    }
-
-    const buffer = await this.convertToWebP(avatar.buffer);
-
-    return {
-      ...avatar,
-      buffer,
-      size: buffer.length,
-      mimetype: 'image/webp',
-      originalname: `${Date.now()}.webp`,
-    };
-  }
-
   private extractExtension(filename: string): string | null {
     const match = /\.([^.]+)$/.exec(filename);
     return match?.[1]?.toLowerCase() ?? null;
