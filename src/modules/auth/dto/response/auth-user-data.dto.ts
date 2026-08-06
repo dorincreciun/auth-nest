@@ -1,5 +1,5 @@
 import { ApiExtraModels, ApiProperty } from '@nestjs/swagger';
-import { UserDto, UserProfileDto } from '../../../users';
+import { UserDto, UserProfileDto } from '../../../users/dto';
 
 /**
  * Conținutul `data` pentru register / login / me.

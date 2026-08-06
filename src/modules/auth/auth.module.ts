@@ -1,14 +1,14 @@
-import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
+import { Module, forwardRef } from '@nestjs/common';
 import { HashModule } from '../hash';
-import { UsersModule } from '../users';
-import { TokenService } from './token.service';
 import { MailerModule } from '../mailer';
+import { UsersModule } from '../users/users.module';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 import { AuthGuard } from './guards';
+import { TokenService } from './token.service';
 
 @Module({
-  imports: [HashModule, UsersModule, MailerModule],
+  imports: [HashModule, forwardRef(() => UsersModule), MailerModule],
   controllers: [AuthController],
   providers: [AuthService, TokenService, AuthGuard],
   exports: [AuthGuard],
