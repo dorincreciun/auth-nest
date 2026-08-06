@@ -12,7 +12,8 @@ import { AuthModule } from './modules/auth';
 import { RedisModule } from './modules/redis';
 import { SessionModule } from './modules/session';
 import { MailerModule } from './modules/mailer';
-import { AppController } from './app.controller';
+import { CloudinaryModule } from './modules/cloudinary';
+import { FileModule } from './modules/file';
 
 @Module({
   imports: [
@@ -48,6 +49,8 @@ import { AppController } from './app.controller';
     RedisModule,
     SessionModule,
     MailerModule,
+    CloudinaryModule,
+    FileModule,
   ],
   providers: [
     {
@@ -55,6 +58,5 @@ import { AppController } from './app.controller';
       useClass: ThrottlerGuard,
     },
   ],
-  controllers: [AppController],
 })
 export class AppModule {}

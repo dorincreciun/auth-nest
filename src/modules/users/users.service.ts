@@ -2,8 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { User, UserProfile } from '@prisma/client';
 import { PrismaService } from '../prisma';
 import { CreateUserPayloadDto, UpdateUserProfilePayloadDto } from './dto';
-import { UpdateUser } from './types';
-import { UserWithProfile } from './types/user-with-profile';
+import { UpdateUser, UserWithProfile } from './types';
 
 @Injectable()
 export class UsersService {
@@ -74,6 +73,21 @@ export class UsersService {
       where: { userId },
       create: { userId, ...data },
       update: data,
+    });
+  }
+
+  public async updateAvatar(userId: string, avatarUrl: string): Promise<UserProfile> {
+    return this.prismaService.userProfile.update({
+      where: { userId },
+      data: { avatarUrl },
+    });
+  }
+
+  /** Șterge avatarul din Prisma (`avatarUrl` → `null`). */
+  public async deleteAvatar(userId: string): Promise<UserProfile> {
+    return this.prismaService.userProfile.update({
+      where: { userId },
+      data: { avatarUrl: null },
     });
   }
 }

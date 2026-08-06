@@ -42,6 +42,11 @@ export interface EnvironmentInterface {
   MAIL_PASSWORD: string;
   MAIL_FROM: string;
 
+  // Cloudinary
+  CLOUDINARY_CLOUD_NAME: string;
+  CLOUDINARY_API_KEY: string;
+  CLOUDINARY_API_SECRET: string;
+
   // Rate limiting
   THROTTLE_SHORT_TTL: StringValue;
   THROTTLE_SHORT_LIMIT: number;
