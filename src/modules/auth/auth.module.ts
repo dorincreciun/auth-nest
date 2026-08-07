@@ -6,9 +6,10 @@ import { UsersModule } from '../users';
 import { TokenService } from './token.service';
 import { MailerModule } from '../mailer';
 import { AuthGuard } from '../../common/guards';
+import { SessionModule } from '../session';
 
 @Module({
-  imports: [HashModule, UsersModule, MailerModule],
+  imports: [HashModule, UsersModule, MailerModule, SessionModule],
   controllers: [AuthController],
   providers: [AuthService, TokenService, AuthGuard],
 })

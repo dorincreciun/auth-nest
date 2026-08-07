@@ -19,6 +19,8 @@ import { CurrentUser } from '../../common/decorators';
 import { ApiSessionAuth, ApiSuccessResponse, ErrorResponseDto } from '../../common/swagger';
 import { extractDeviceData, isProduction } from '../../common/utils';
 import { UserDto, UserMapper, UserProfileDto, UsersService } from '../users';
+import { SessionService } from '../session';
+import { UserActiveSession } from '../redis';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators';
 import {
@@ -31,6 +33,7 @@ import {
   ResetPasswordPayloadDto,
   TokenSentDataDto,
 } from './dto';
+import { EnvironmentInterface } from '../../common/interfaces';
 
 const AUTH_USER_EXTRA_MODELS = [UserDto, UserProfileDto] as const;
 
@@ -41,6 +44,7 @@ export class AuthController {
     LOGOUT_SUCCESS: 'Deconectare reușită',
     SESSION_REGENERATE_ERROR: 'Eroare la reînnoirea sesiunii',
     SESSION_SAVE_ERROR: 'Eroare la salvarea sesiunii',
+    SESSION_INDEX_ERROR: 'Eroare la salvarea indexului de sesiune',
     LOGOUT_ERROR: 'A apărut o eroare la deconectare',
     USER_NOT_AUTHENTICATED: 'Nu ești autentificat. Autentifică-te pentru a continua.',
   } as const;
@@ -48,7 +52,8 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
-    private readonly config: ConfigService,
+    private readonly sessionService: SessionService,
+    private readonly config: ConfigService<EnvironmentInterface>,
   ) {}
 
   /**
@@ -300,16 +305,29 @@ export class AuthController {
             reject(new InternalServerErrorException(AuthController.MESSAGES.SESSION_SAVE_ERROR));
             return;
           }
-          resolve();
+
+          void this.sessionService
+            .addUserSession(user.id, req.sessionID)
+            .then(() => resolve())
+            .catch(() =>
+              reject(new InternalServerErrorException(AuthController.MESSAGES.SESSION_INDEX_ERROR)),
+            );
         });
       });
     });
   }
 
   /**
-   * Helper privat: Distruge complet sesiunea curentă a utilizatorului din backend.
+   * Helper privat: Scoate sesiunea din indexul Redis și o distruge din store.
    */
   private async destroySession(req: Request): Promise<void> {
+    const userId = req.session.userId;
+    const sessionId = req.sessionID;
+
+    if (userId) {
+      await this.sessionService.removeUserSession(userId, sessionId);
+    }
+
     return new Promise<void>((resolve, reject) => {
       req.session.destroy((err: Error | null) => {
         if (err) {
@@ -319,5 +337,12 @@ export class AuthController {
         resolve();
       });
     });
+  }
+
+  /**
+   * Helper privat: Listează sesiunile active ale utilizatorului din Redis.
+   */
+  private getActiveSessions(userId: string): Promise<UserActiveSession[]> {
+    return this.sessionService.getUserSessions(userId);
   }
 }
