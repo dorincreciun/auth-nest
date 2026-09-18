@@ -1,11 +1,15 @@
 import { Module } from '@nestjs/common';
-import { FileService } from './file.service';
-import { FileController } from './file.controller';
-import { CloudinaryModule } from '../cloudinary';
 
+import { CloudinaryModule } from '../cloudinary';
+import { FileService } from './file.service';
+
+/**
+ * Procesarea și stocarea fișierelor. Modulul nu expune rute proprii: fișierele
+ * intră întotdeauna prin endpoint-ul domeniului care le folosește (ex. avatarul
+ * unui utilizator), ca fiecare upload să fie autorizat și validat în context.
+ */
 @Module({
   imports: [CloudinaryModule],
-  controllers: [FileController],
   providers: [FileService],
   exports: [FileService],
 })

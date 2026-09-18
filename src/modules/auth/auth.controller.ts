@@ -4,25 +4,21 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  InternalServerErrorException,
   Post,
   Req,
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import type { Request, Response } from 'express';
 import { type User } from '@prisma/client';
-import { CurrentUser } from '../../common/decorators';
-import { ApiSessionAuth, ApiSuccessResponse, ErrorResponseDto } from '../../common/swagger';
-import { extractDeviceData, isProduction } from '../../common/utils';
-import { UserDto, UserMapper, UserProfileDto, UsersService } from '../users';
+import type { Request, Response } from 'express';
+
+import { Auth, CurrentUser } from '../../common/decorators';
+import { ApiSuccessResponse, ErrorResponseDto } from '../../common/swagger';
 import { SessionService } from '../session';
-import { UserActiveSession } from '../redis';
+import { UserDto, UserMapper, UserProfileDto, UsersService } from '../users';
 import { AuthService } from './auth.service';
-import { Auth } from './decorators';
 import {
   AuthUserDataDto,
   ConfirmEmailPayloadDto,
@@ -33,37 +29,26 @@ import {
   ResetPasswordPayloadDto,
   TokenSentDataDto,
 } from './dto';
-import { EnvironmentInterface } from '../../common/interfaces';
 
-const AUTH_USER_EXTRA_MODELS = [UserDto, UserProfileDto] as const;
+const USER_EXTRA_MODELS = [UserDto, UserProfileDto];
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   private static readonly MESSAGES = {
     LOGOUT_SUCCESS: 'Deconectare reușită',
-    SESSION_REGENERATE_ERROR: 'Eroare la reînnoirea sesiunii',
-    SESSION_SAVE_ERROR: 'Eroare la salvarea sesiunii',
-    SESSION_INDEX_ERROR: 'Eroare la salvarea indexului de sesiune',
-    LOGOUT_ERROR: 'A apărut o eroare la deconectare',
     USER_NOT_AUTHENTICATED: 'Nu ești autentificat. Autentifică-te pentru a continua.',
   } as const;
 
-  constructor(
+  public constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
     private readonly sessionService: SessionService,
-    private readonly config: ConfigService<EnvironmentInterface>,
   ) {}
 
-  /**
-   * Înregistrează un utilizator nou în sistem.
-   * - Apelează serviciul de înregistrare
-   * - Inițiază o sesiune nouă securizată (anti-session fixation)
-   * - Returnează datele utilizatorului creat
-   */
+  /** Creează un cont nou și pornește imediat o sesiune autenticată. */
   @SkipThrottle({ short: true, medium: true })
-  @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 / oră
+  @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } })
   @HttpCode(HttpStatus.CREATED)
   @Post('register')
   @ApiOperation({
@@ -75,107 +60,85 @@ export class AuthController {
   @ApiSuccessResponse(AuthUserDataDto, {
     status: 201,
     description: 'Utilizator creat și sesiune inițiată (profile: null)',
-    extraModels: [...AUTH_USER_EXTRA_MODELS],
+    extraModels: USER_EXTRA_MODELS,
   })
   @ApiResponse({ status: 409, description: 'Conflict la înregistrare', type: ErrorResponseDto })
   @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
   public async register(
-    @Req() req: Request,
-    @Body() dto: RegisterPayloadDto,
+    @Req() request: Request,
+    @Body() payload: RegisterPayloadDto,
   ): Promise<AuthUserDataDto> {
-    const user = await this.authService.register(dto);
-    await this.startSession(req, user);
+    const user = await this.authService.register(payload);
+    await this.sessionService.start(request, user.id);
+
     return { user: UserMapper.toDto(user) };
   }
 
-  /**
-   * Autentifică un utilizator existent pe baza datelor de login.
-   * - Validează credențialele
-   * - Creează o sesiune nouă și salvează datele dispozitivului
-   * - Returnează profilul utilizatorului
-   */
+  /** Autentifică utilizatorul și pornește o sesiune nouă. */
   @SkipThrottle({ medium: true, long: true })
-  @Throttle({ short: { limit: 5, ttl: 60 * 1000 } }) // 5 / minut
+  @Throttle({ short: { limit: 5, ttl: 60 * 1000 } })
   @HttpCode(HttpStatus.OK)
   @Post('login')
   @ApiOperation({
     summary: 'Autentificare cu email și parolă',
     description:
-      'Validează credențialele, regenerază sesiunea și returnează userul public. ' +
+      'Validează credențialele, regenerează sesiunea și returnează userul public. ' +
       '`user.profile` este `null` aici (profilul se citește pe GET /auth/me).',
   })
   @ApiSuccessResponse(AuthUserDataDto, {
     status: 200,
     description: 'Autentificare reușită (profile: null)',
-    extraModels: [...AUTH_USER_EXTRA_MODELS],
+    extraModels: USER_EXTRA_MODELS,
   })
   @ApiResponse({ status: 401, description: 'Credențiale invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
-  public async login(@Req() req: Request, @Body() dto: LoginPayloadDto): Promise<AuthUserDataDto> {
-    const user = await this.authService.login(dto);
-    await this.startSession(req, user);
+  public async login(
+    @Req() request: Request,
+    @Body() payload: LoginPayloadDto,
+  ): Promise<AuthUserDataDto> {
+    const user = await this.authService.login(payload);
+    await this.sessionService.start(request, user.id);
+
     return { user: UserMapper.toDto(user) };
   }
 
-  /**
-   * Deconectează utilizatorul curent.
-   * - Distruge sesiunea activă de pe server/stocare
-   * - Șterge cookie-ul de sesiune din browserul clientului
-   */
+  /** Închide sesiunea curentă și șterge cookie-ul din browser. */
   @SkipThrottle({ medium: true, long: true })
-  @Throttle({ short: { limit: 10, ttl: 60 * 1000 } }) // 10 / minut
-  @ApiSessionAuth()
+  @Throttle({ short: { limit: 10, ttl: 60 * 1000 } })
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('logout')
-  @ApiOperation({ summary: 'Deconectare (distruge sesiunea)' })
-  @ApiSuccessResponse(MessageDataDto, {
-    status: 200,
-    description: 'Deconectare reușită',
-  })
-  @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
+  @ApiOperation({ summary: 'Deconectare (închide sesiunea curentă)' })
+  @ApiSuccessResponse(MessageDataDto, { status: 200, description: 'Deconectare reușită' })
   public async logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
   ): Promise<MessageDataDto> {
-    await this.destroySession(req);
-
-    const sessionCookieName = this.config.getOrThrow<string>('SESSION_NAME');
-    res.clearCookie(sessionCookieName, {
-      path: '/',
-      domain: this.config.getOrThrow<string>('SESSION_DOMAIN'),
-      httpOnly: true,
-      secure: isProduction(),
-      sameSite: 'lax',
-    });
+    await this.sessionService.destroy(request);
+    this.sessionService.clearCookie(response);
 
     return { message: AuthController.MESSAGES.LOGOUT_SUCCESS };
   }
 
-  /**
-   * Returnează profilul utilizatorului din sesiunea curentă.
-   * Protejat de AuthGuard — fără sesiune validă request-ul nu ajunge aici.
-   */
+  /** Contul din sesiunea curentă, împreună cu profilul nested. */
   @SkipThrottle({ medium: true, long: true })
-  @Throttle({ short: { limit: 30, ttl: 60 * 1000 } }) // 30 / minut
-  @ApiSessionAuth()
+  @Throttle({ short: { limit: 30, ttl: 60 * 1000 } })
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Get('me')
   @ApiOperation({
     summary: 'Profilul utilizatorului autentificat',
     description:
-      'Returnează contul curent împreună cu profilul nested (`user.profile`). ' +
-      'Spre deosebire de register/login, aici relația `profile` este încărcată din DB.',
+      'Returnează contul curent împreună cu profilul nested (`user.profile`), ' +
+      'spre deosebire de register/login unde relația nu este încărcată.',
   })
   @ApiSuccessResponse(AuthUserDataDto, {
     status: 200,
     description: 'Utilizator + profil nested din sesiune',
-    extraModels: [...AUTH_USER_EXTRA_MODELS],
+    extraModels: USER_EXTRA_MODELS,
   })
-  @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
   public async getMe(@CurrentUser('id') userId: string): Promise<AuthUserDataDto> {
     const user = await this.usersService.findByIdWithProfile(userId);
 
@@ -186,13 +149,9 @@ export class AuthController {
     return { user: UserMapper.toDtoWithProfile(user) };
   }
 
-  /**
-   * Generează și trimite un cod de 6 cifre pe emailul utilizatorului.
-   * - Folosit pentru a valida că adresa de e-mail introdusă la înregistrare este reală.
-   */
+  /** Trimite pe email codul care confirmă că adresa introdusă este reală. */
   @SkipThrottle({ short: true, long: true })
-  @Throttle({ medium: { limit: 2, ttl: 5 * 60 * 1000 } }) // 2 / 5 minute
-  @ApiSessionAuth()
+  @Throttle({ medium: { limit: 2, ttl: 5 * 60 * 1000 } })
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/send')
@@ -203,48 +162,38 @@ export class AuthController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Email deja confirmat / token încă valid',
+    description: 'Email deja confirmat / cod încă valid',
     type: ErrorResponseDto,
   })
-  @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
-  public emailVerifySend(@CurrentUser() user: User): Promise<TokenSentDataDto> {
+  public sendVerificationEmail(@CurrentUser() user: User): Promise<TokenSentDataDto> {
     return this.authService.sendVerificationEmail(user);
   }
 
-  /**
-   * Primește un cod de 6 cifre de la client.
-   * - Folosit pentru a valida că adresa de e-mail introdusă la înregistrare este reală.
-   */
+  /** Confirmă adresa de email pe baza codului primit. */
   @SkipThrottle({ short: true, long: true })
-  @Throttle({ medium: { limit: 5, ttl: 5 * 60 * 1000 } }) // 5 / 5 minute
-  @ApiSessionAuth()
+  @Throttle({ medium: { limit: 5, ttl: 5 * 60 * 1000 } })
   @Auth()
   @HttpCode(HttpStatus.OK)
   @Post('email/verify/confirm')
   @ApiOperation({ summary: 'Confirmă emailul cu codul primit' })
-  @ApiSuccessResponse(MessageDataDto, {
-    status: 200,
-    description: 'Email confirmat cu succes',
-  })
+  @ApiSuccessResponse(MessageDataDto, { status: 200, description: 'Email confirmat cu succes' })
   @ApiResponse({ status: 400, description: 'Cod invalid / expirat', type: ErrorResponseDto })
-  @ApiResponse({ status: 401, description: 'Neautentificat', type: ErrorResponseDto })
   @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
   public confirmEmail(
     @CurrentUser() user: User,
-    @Body() dto: ConfirmEmailPayloadDto,
+    @Body() payload: ConfirmEmailPayloadDto,
   ): Promise<MessageDataDto> {
-    return this.authService.confirmEmail(user, dto.token);
+    return this.authService.confirmEmail(user, payload.token);
   }
 
   /**
-   * Pornește resetarea parolei pe baza adresei de email.
-   * - Dacă există un cont, generează un token RESET_PASSWORD și trimite emailul
-   * - Răspunsul e mereu același, ca să nu permită enumerarea conturilor
+   * Pornește resetarea parolei.
+   * Răspunsul e identic pentru orice adresă, ca să nu permită enumerarea conturilor.
    */
   @SkipThrottle({ short: true, medium: true })
-  @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } }) // 3 / oră
+  @Throttle({ long: { limit: 3, ttl: 60 * 60 * 1000 } })
   @HttpCode(HttpStatus.OK)
   @Post('password/forgot')
   @ApiOperation({ summary: 'Solicită resetarea parolei' })
@@ -254,95 +203,21 @@ export class AuthController {
   })
   @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
-  public forgotPassword(@Body() dto: ForgotPasswordPayloadDto): Promise<TokenSentDataDto> {
-    return this.authService.forgotPassword(dto);
+  public forgotPassword(@Body() payload: ForgotPasswordPayloadDto): Promise<TokenSentDataDto> {
+    return this.authService.forgotPassword(payload);
   }
 
-  /**
-   * Resetează parola folosind codul primit pe email.
-   * - Validează emailul, tokenul RESET_PASSWORD și noua parolă
-   * - Actualizează parola contului dacă tokenul este valid
-   */
+  /** Schimbă parola cu codul primit pe email și deconectează toate dispozitivele. */
   @SkipThrottle({ short: true, long: true })
-  @Throttle({ medium: { limit: 5, ttl: 5 * 60 * 1000 } }) // 5 / 5 minute
+  @Throttle({ medium: { limit: 5, ttl: 5 * 60 * 1000 } })
   @HttpCode(HttpStatus.OK)
   @Post('password/reset')
   @ApiOperation({ summary: 'Resetează parola cu codul primit pe email' })
-  @ApiSuccessResponse(MessageDataDto, {
-    status: 200,
-    description: 'Parola a fost resetată',
-  })
+  @ApiSuccessResponse(MessageDataDto, { status: 200, description: 'Parola a fost resetată' })
   @ApiResponse({ status: 400, description: 'Cod invalid / expirat', type: ErrorResponseDto })
   @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
   @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
-  public resetPassword(@Body() dto: ResetPasswordPayloadDto): Promise<MessageDataDto> {
-    return this.authService.resetPassword(dto);
-  }
-
-  /**
-   * Helper privat: Regenerează sesiunea (previne atacurile de tip session fixation)
-   * și atașează userId-ul și metadatele dispozitivului pe noua sesiune.
-   */
-  private async startSession(req: Request, user: User): Promise<void> {
-    const sessionData = {
-      userId: user.id,
-      deviceData: extractDeviceData(req),
-    };
-
-    return new Promise<void>((resolve, reject) => {
-      req.session.regenerate((regenerateErr: Error | null) => {
-        if (regenerateErr) {
-          reject(
-            new InternalServerErrorException(AuthController.MESSAGES.SESSION_REGENERATE_ERROR),
-          );
-          return;
-        }
-
-        Object.assign(req.session, sessionData);
-
-        req.session.save((saveErr: Error | null) => {
-          if (saveErr) {
-            reject(new InternalServerErrorException(AuthController.MESSAGES.SESSION_SAVE_ERROR));
-            return;
-          }
-
-          void this.sessionService
-            .addUserSession(user.id, req.sessionID)
-            .then(() => resolve())
-            .catch(() =>
-              reject(new InternalServerErrorException(AuthController.MESSAGES.SESSION_INDEX_ERROR)),
-            );
-        });
-      });
-    });
-  }
-
-  /**
-   * Helper privat: Scoate sesiunea din indexul Redis și o distruge din store.
-   */
-  private async destroySession(req: Request): Promise<void> {
-    const userId = req.session.userId;
-    const sessionId = req.sessionID;
-
-    if (userId) {
-      await this.sessionService.removeUserSession(userId, sessionId);
-    }
-
-    return new Promise<void>((resolve, reject) => {
-      req.session.destroy((err: Error | null) => {
-        if (err) {
-          reject(new InternalServerErrorException(AuthController.MESSAGES.LOGOUT_ERROR));
-          return;
-        }
-        resolve();
-      });
-    });
-  }
-
-  /**
-   * Helper privat: Listează sesiunile active ale utilizatorului din Redis.
-   */
-  private getActiveSessions(userId: string): Promise<UserActiveSession[]> {
-    return this.sessionService.getUserSessions(userId);
+  public resetPassword(@Body() payload: ResetPasswordPayloadDto): Promise<MessageDataDto> {
+    return this.authService.resetPassword(payload);
   }
 }

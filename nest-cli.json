@@ -16,7 +16,7 @@
     "assets": [
       {
         "include": "**/*.hbs",
-        "outDir": "dist/src",
+        "outDir": "dist",
         "watch": true
       }
     ]

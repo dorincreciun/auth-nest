@@ -11,12 +11,14 @@ export class CloudinaryService {
     const result = await new Promise<UploadApiResponse>((resolve, reject) => {
       const uploadStream = this.cloudinary.uploader.upload_stream(
         { folder },
-        (error: UploadApiErrorResponse, result: UploadApiResponse) => {
-          if (error) {
-            return reject(
+        (error?: UploadApiErrorResponse, result?: UploadApiResponse) => {
+          if (error || !result) {
+            reject(
               new InternalServerErrorException('Eroare la încărcarea fișierului pe Cloudinary'),
             );
+            return;
           }
+
           resolve(result);
         },
       );

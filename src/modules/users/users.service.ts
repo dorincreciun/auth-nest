@@ -1,93 +1,92 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
 import { User, UserProfile } from '@prisma/client';
-import { PrismaService } from '../prisma';
-import { CreateUserPayloadDto, UpdateUserProfilePayloadDto } from './dto';
-import { UpdateUser, UserWithProfile } from './types';
 
+import { uploadConfig } from '../../config';
+import { FileService, MFile } from '../file';
+import { UpdateUserProfilePayloadDto } from './dto';
+import { UserWithProfile } from './types';
+import { UsersRepository } from './users.repository';
+
+/**
+ * Regulile de business din jurul contului și profilului de utilizator.
+ * Persistența e delegată către `UsersRepository`, iar stocarea imaginilor către `FileService`.
+ */
 @Injectable()
 export class UsersService {
-  public constructor(private readonly prismaService: PrismaService) {}
+  private static readonly MESSAGES = {
+    NO_AVATAR_TO_DELETE: 'Nu există un avatar de șters',
+  } as const;
 
-  public async exists(email: string): Promise<boolean> {
-    try {
-      const user = await this.prismaService.user.findUnique({
-        where: { email },
-        select: { id: true },
-      });
-      return !!user;
-    } catch (error) {
-      console.error('PRISMA ERROR:', error);
-      throw error;
+  public constructor(
+    private readonly repository: UsersRepository,
+    private readonly fileService: FileService,
+    @Inject(uploadConfig.KEY) private readonly uploads: ConfigType<typeof uploadConfig>,
+  ) {}
+
+  public existsByEmail(email: string): Promise<boolean> {
+    return this.repository.existsByEmail(email);
+  }
+
+  public findById(id: string): Promise<User | null> {
+    return this.repository.findById(id);
+  }
+
+  public findByIdWithProfile(id: string): Promise<UserWithProfile | null> {
+    return this.repository.findByIdWithProfile(id);
+  }
+
+  public findByEmail(email: string): Promise<User | null> {
+    return this.repository.findByEmail(email);
+  }
+
+  /** Așteaptă parola deja hash-uită — hashing-ul rămâne responsabilitatea `HashService`. */
+  public create(email: string, passwordHash: string): Promise<User> {
+    return this.repository.create(email, passwordHash);
+  }
+
+  public markAsVerified(userId: string): Promise<User> {
+    return this.repository.setVerified(userId, true);
+  }
+
+  public changePassword(userId: string, passwordHash: string): Promise<User> {
+    return this.repository.setPassword(userId, passwordHash);
+  }
+
+  public getProfile(userId: string): Promise<UserProfile | null> {
+    return this.repository.findProfile(userId);
+  }
+
+  public updateProfile(userId: string, payload: UpdateUserProfilePayloadDto): Promise<UserProfile> {
+    return this.repository.upsertProfile(userId, payload);
+  }
+
+  /**
+   * Înlocuiește avatarul: urcă imaginea nouă, salvează URL-ul și abia apoi șterge
+   * fișierul vechi, ca o eroare de upload să nu lase profilul fără avatar.
+   */
+  public async replaceAvatar(userId: string, file: MFile): Promise<UserProfile> {
+    const previousAvatarUrl = (await this.repository.findProfile(userId))?.avatarUrl ?? null;
+
+    const [avatarUrl] = await this.fileService.saveFiles([file], this.uploads.avatarFolder);
+    const profile = await this.repository.setAvatarUrl(userId, avatarUrl);
+
+    if (previousAvatarUrl) {
+      await this.fileService.deleteFile(previousAvatarUrl);
     }
+
+    return profile;
   }
 
-  public async findById(id: string): Promise<User | null> {
-    return this.prismaService.user.findUnique({
-      where: { id },
-    });
-  }
+  public async removeAvatar(userId: string): Promise<UserProfile> {
+    const profile = await this.repository.findProfile(userId);
 
-  public async findByIdWithProfile(id: string): Promise<UserWithProfile | null> {
-    return this.prismaService.user.findUnique({
-      where: { id },
-      include: { profile: true },
-    });
-  }
+    if (!profile?.avatarUrl) {
+      throw new BadRequestException(UsersService.MESSAGES.NO_AVATAR_TO_DELETE);
+    }
 
-  public async findByEmail(email: string): Promise<User | null> {
-    return this.prismaService.user.findUnique({
-      where: { email },
-    });
-  }
+    await this.fileService.deleteFile(profile.avatarUrl);
 
-  public async create(dto: CreateUserPayloadDto): Promise<User> {
-    return this.prismaService.user.create({
-      data: {
-        email: dto.email,
-        password: dto.password,
-        profile: {
-          create: {},
-        },
-      },
-    });
-  }
-
-  public async update(id: string, data: UpdateUser): Promise<User> {
-    return this.prismaService.user.update({
-      where: { id },
-      data,
-    });
-  }
-
-  public async getProfile(userId: string): Promise<UserProfile | null> {
-    return this.prismaService.userProfile.findUnique({
-      where: { userId },
-    });
-  }
-
-  public async updateProfile(
-    userId: string,
-    data: UpdateUserProfilePayloadDto,
-  ): Promise<UserProfile> {
-    return this.prismaService.userProfile.upsert({
-      where: { userId },
-      create: { userId, ...data },
-      update: data,
-    });
-  }
-
-  public async updateAvatar(userId: string, avatarUrl: string): Promise<UserProfile> {
-    return this.prismaService.userProfile.update({
-      where: { userId },
-      data: { avatarUrl },
-    });
-  }
-
-  /** Șterge avatarul din Prisma (`avatarUrl` → `null`). */
-  public async deleteAvatar(userId: string): Promise<UserProfile> {
-    return this.prismaService.userProfile.update({
-      where: { userId },
-      data: { avatarUrl: null },
-    });
+    return this.repository.setAvatarUrl(userId, null);
   }
 }

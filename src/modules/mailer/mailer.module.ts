@@ -1,28 +1,28 @@
 import { Module } from '@nestjs/common';
-import { MailerService } from './mailer.service';
 import { MailerModule as NestMailerModule } from '@nestjs-modules/mailer';
-import { ConfigService } from '@nestjs/config';
-import { EnvironmentInterface } from '../../common/interfaces';
-import { parseBoolean } from '../../common/utils';
-import { join } from 'path';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/adapters/handlebars.adapter';
+import { ConfigType } from '@nestjs/config';
+import { join } from 'node:path';
+
+import { mailConfig } from '../../config';
+import { MailerService } from './mailer.service';
 
 @Module({
   imports: [
     NestMailerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<EnvironmentInterface>) => ({
+      inject: [mailConfig.KEY],
+      useFactory: (config: ConfigType<typeof mailConfig>) => ({
         transport: {
-          host: config.getOrThrow<string>('MAIL_HOST'),
-          port: config.getOrThrow<number>('MAIL_PORT'),
-          secure: parseBoolean(config.getOrThrow<string>('MAIL_SECURE')),
+          host: config.host,
+          port: config.port,
+          secure: config.secure,
           auth: {
-            user: config.getOrThrow<string>('MAIL_USER'),
-            pass: config.getOrThrow<string>('MAIL_PASSWORD'),
+            user: config.user,
+            pass: config.password,
           },
         },
         defaults: {
-          from: config.getOrThrow<string>('MAIL_FROM'),
+          from: config.from,
         },
         template: {
           dir: join(__dirname, 'templates'),

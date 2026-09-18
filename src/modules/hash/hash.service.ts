@@ -1,25 +1,35 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { EnvironmentInterface } from '../../common/interfaces';
 
+import { securityConfig } from '../../config';
+
+/**
+ * Hashing de parole cu bcrypt.
+ *
+ * Expune și un „hash-fantomă”, folosit la login când emailul nu există: comparăm
+ * parola cu el ca durata răspunsului să nu dezvăluie dacă adresa e înregistrată.
+ */
 @Injectable()
 export class HashService implements OnModuleInit {
-  private dummyHash!: string;
+  private static readonly DUMMY_PLAINTEXT = '__timing_dummy__';
 
-  public constructor(private readonly configService: ConfigService<EnvironmentInterface>) {}
+  private dummyHash = '';
+
+  public constructor(
+    @Inject(securityConfig.KEY) private readonly config: ConfigType<typeof securityConfig>,
+  ) {}
 
   public async onModuleInit(): Promise<void> {
-    this.dummyHash = await this.hash('__timing_dummy__');
+    this.dummyHash = await this.hash(HashService.DUMMY_PLAINTEXT);
   }
 
-  public async hash(data: string): Promise<string> {
-    const saltRounds = Number(this.configService.getOrThrow<number>('BCRYPT_SALT'));
-    return await bcrypt.hash(data, saltRounds);
+  public hash(plaintext: string): Promise<string> {
+    return bcrypt.hash(plaintext, this.config.bcryptSaltRounds);
   }
 
-  public async compare(data: string, encrypted: string): Promise<boolean> {
-    return await bcrypt.compare(data, encrypted);
+  public compare(plaintext: string, hash: string): Promise<boolean> {
+    return bcrypt.compare(plaintext, hash);
   }
 
   public getDummyHash(): string {

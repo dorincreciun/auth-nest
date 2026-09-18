@@ -1,0 +1,30 @@
+# Override pentru development. Se combină cu docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# API-ul rulează `nest start --watch` cu `src/` montat din gazdă. PostgreSQL,
+# Redis și migrările rămân neschimbate față de compose-ul de bază.
+
+services:
+  migrate:
+    build:
+      target: dev
+    volumes:
+      - .:/app
+      - api_node_modules:/app/node_modules
+    command: ["npx", "prisma", "migrate", "deploy"]
+
+  api:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+      APP_URL: 0.0.0.0
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - api_node_modules:/app/node_modules
+    tty: true
+    stdin_open: true
+
+volumes:
+  api_node_modules:

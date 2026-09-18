@@ -1,62 +1,68 @@
-import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Module, ValidationPipe } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { ConfigModule, ConfigType } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import ms, { StringValue } from 'ms';
 
-/* Modules */
-import { PrismaModule } from './modules/prisma';
-import { HashModule } from './modules/hash';
-import { UsersModule } from './modules/users';
+import { HttpExceptionFilter, PrismaExceptionFilter } from './common/exceptions';
+import { validationExceptionFactory } from './common/factories';
+import { TransformInterceptor } from './common/interceptors';
+import { configurations, throttleConfig, validateEnvironment } from './config';
 import { AuthModule } from './modules/auth';
-import { RedisModule } from './modules/redis';
-import { SessionModule } from './modules/session';
-import { MailerModule } from './modules/mailer';
 import { CloudinaryModule } from './modules/cloudinary';
 import { FileModule } from './modules/file';
+import { HashModule } from './modules/hash';
+import { HealthModule } from './modules/health';
+import { MailerModule } from './modules/mailer';
+import { PrismaModule } from './modules/prisma';
+import { RedisModule } from './modules/redis';
+import { SessionModule } from './modules/session';
+import { UsersModule } from './modules/users';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      cache: true,
       expandVariables: true,
+      load: [...configurations],
+      validate: validateEnvironment,
     }),
     ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => [
-        {
-          name: 'short',
-          ttl: ms(config.getOrThrow<StringValue>('THROTTLE_SHORT_TTL')),
-          limit: Number(config.getOrThrow<number>('THROTTLE_SHORT_LIMIT')),
-        },
-        {
-          name: 'medium',
-          ttl: ms(config.getOrThrow<StringValue>('THROTTLE_MEDIUM_TTL')),
-          limit: Number(config.getOrThrow<number>('THROTTLE_MEDIUM_LIMIT')),
-        },
-        {
-          name: 'long',
-          ttl: ms(config.getOrThrow<StringValue>('THROTTLE_LONG_TTL')),
-          limit: Number(config.getOrThrow<number>('THROTTLE_LONG_LIMIT')),
-        },
-      ],
+      inject: [throttleConfig.KEY],
+      useFactory: (throttle: ConfigType<typeof throttleConfig>) => ({
+        throttlers: [
+          { name: 'short', ttl: throttle.short.ttlMs, limit: throttle.short.limit },
+          { name: 'medium', ttl: throttle.medium.ttlMs, limit: throttle.medium.limit },
+          { name: 'long', ttl: throttle.long.ttlMs, limit: throttle.long.limit },
+        ],
+      }),
     }),
     PrismaModule,
-    HashModule,
-    UsersModule,
-    AuthModule,
     RedisModule,
-    SessionModule,
+    HashModule,
     MailerModule,
     CloudinaryModule,
     FileModule,
+    UsersModule,
+    SessionModule,
+    AuthModule,
+    HealthModule,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        exceptionFactory: validationExceptionFactory,
+      }),
     },
+    { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
+    /** Ordinea contează: filtrul înregistrat ultimul are prioritate la potrivire. */
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
+    { provide: APP_FILTER, useClass: PrismaExceptionFilter },
   ],
 })
 export class AppModule {}
