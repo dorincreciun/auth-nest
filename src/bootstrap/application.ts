@@ -59,7 +59,7 @@ export class Application {
 
     await this.app.listen(config.port, config.host);
 
-    this.logger.log(`${config.name} rulează pe ${await this.app.getUrl()}`);
+    this.logger.log(`${config.name} rulează pe http://${config.host}:${config.port}`);
   }
 
   /** Toate rutele trăiesc sub `/<prefix>/v<versiune>`, ca versiunile viitoare să poată coexista. */

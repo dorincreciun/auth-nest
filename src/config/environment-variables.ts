@@ -44,6 +44,12 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   APP_NAME = 'Nest Auth';
 
+  /** Adresa de bind HTTP. În containere trebuie `0.0.0.0`, nu `localhost`. */
+  @IsString()
+  @IsNotEmpty()
+  APP_HOST = '0.0.0.0';
+
+  /** Păstrat pentru `.env`-urile existente; bind-ul folosește `APP_HOST`. */
   @IsString()
   @IsNotEmpty()
   APP_URL = '0.0.0.0';

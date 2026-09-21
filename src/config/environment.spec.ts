@@ -1,3 +1,4 @@
+import { resolveListenHost } from './app.config';
 import { resetEnvironmentCache, validateEnvironment } from './environment';
 import { NodeEnvironment } from './environment-variables';
 
@@ -15,6 +16,7 @@ describe('validateEnvironment', () => {
     const environment = validateEnvironment({ ...requiredEnvironment });
 
     expect(environment.NODE_ENV).toBe(NodeEnvironment.Development);
+    expect(environment.APP_HOST).toBe('0.0.0.0');
     expect(environment.APP_PORT).toBe(5000);
     expect(environment.SESSION_MAX_AGE).toBe('30d');
     expect(environment.CORS_ORIGIN).toEqual(['http://localhost:3000']);
@@ -68,5 +70,34 @@ describe('validateEnvironment', () => {
     expect(() =>
       validateEnvironment({ ...requiredEnvironment, APP_PORT: '0', BCRYPT_SALT: '3' }),
     ).toThrow(/APP_PORT[\s\S]*BCRYPT_SALT|BCRYPT_SALT[\s\S]*APP_PORT/);
+  });
+
+  it('folosește PORT-ul injectat de platformă când APP_PORT lipsește', () => {
+    const environment = validateEnvironment({ ...requiredEnvironment, PORT: '10000' });
+
+    expect(environment.APP_PORT).toBe(10000);
+  });
+
+  it('lasă PORT-ul platformei să aibă prioritate față de APP_PORT', () => {
+    const environment = validateEnvironment({
+      ...requiredEnvironment,
+      APP_PORT: '5000',
+      PORT: '10000',
+    });
+
+    expect(environment.APP_PORT).toBe(10000);
+  });
+});
+
+describe('resolveListenHost', () => {
+  it('înlocuiește loopback-ul cu 0.0.0.0 ca platforma să poată rute traficul', () => {
+    expect(resolveListenHost('localhost')).toBe('0.0.0.0');
+    expect(resolveListenHost('127.0.0.1')).toBe('0.0.0.0');
+    expect(resolveListenHost('::1')).toBe('0.0.0.0');
+  });
+
+  it('păstrează o adresă de bind validă', () => {
+    expect(resolveListenHost('0.0.0.0')).toBe('0.0.0.0');
+    expect(resolveListenHost('::')).toBe('::');
   });
 });

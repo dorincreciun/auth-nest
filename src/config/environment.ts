@@ -11,7 +11,7 @@ let cachedEnvironment: EnvironmentVariables | null = null;
  * să nu descopere configurația greșită câmp cu câmp.
  */
 export function validateEnvironment(raw: Record<string, unknown>): EnvironmentVariables {
-  const environment = plainToInstance(EnvironmentVariables, omitEmptyValues(raw), {
+  const environment = plainToInstance(EnvironmentVariables, applyPlatformAliases(raw), {
     exposeDefaultValues: true,
     enableImplicitConversion: false,
   });
@@ -46,6 +46,19 @@ function omitEmptyValues(raw: Record<string, unknown>): Record<string, unknown> 
   return Object.fromEntries(
     Object.entries(raw).filter(([, value]) => !(typeof value === 'string' && value.trim() === '')),
   );
+}
+
+/**
+ * Aliasuri injectate de platforme (Render, Heroku, Cloud Run): `PORT` e portul
+ * pe care orchestratorul rutează traficul, deci are prioritate față de `APP_PORT`.
+ */
+function applyPlatformAliases(raw: Record<string, unknown>): Record<string, unknown> {
+  const env = omitEmptyValues(raw);
+
+  return {
+    ...env,
+    APP_PORT: env.PORT ?? env.APP_PORT,
+  };
 }
 
 /**
