@@ -4,8 +4,8 @@ API de autentificare pentru aplicații web, construit pe **sesiuni server-side**
 NestJS 11, Prisma 7, PostgreSQL și Redis.
 
 Oferă tot ce are nevoie un frontend pentru contul unui utilizator: înregistrare, autentificare,
-confirmarea adresei de email prin cod OTP, resetarea parolei, profil cu avatar și gestionarea
-dispozitivelor de pe care utilizatorul este conectat.
+resetarea parolei, profil cu avatar și gestionarea dispozitivelor de pe care utilizatorul este
+conectat. Contul este activ imediat după înregistrare; nu există un pas de confirmare a emailului.
 
 ---
 
@@ -169,8 +169,6 @@ Toate rutele sunt prefixate cu `/api/v1` (configurabil prin `API_PREFIX` / `API_
 | POST   | `/auth/login`                |    –    | Autentificare cu email și parolă                   |
 | POST   | `/auth/logout`               |    da   | Închide sesiunea curentă                           |
 | GET    | `/auth/me`                   |    da   | Contul curent, cu profilul nested                  |
-| POST   | `/auth/email/verify/send`    |    da   | Trimite codul de confirmare pe email               |
-| POST   | `/auth/email/verify/confirm` |    da   | Confirmă emailul cu codul primit                   |
 | POST   | `/auth/password/forgot`      |    –    | Cere codul de resetare                             |
 | POST   | `/auth/password/reset`       |    –    | Schimbă parola și închide toate sesiunile          |
 
@@ -209,7 +207,7 @@ Succes:
   "success": true,
   "statusCode": 200,
   "meta": { "path": "/api/v1/auth/login", "timestamp": "2026-09-18T06:00:00.000Z" },
-  "data": { "user": { "id": "…", "email": "…", "isVerified": false, "profile": null } }
+  "data": { "user": { "id": "…", "email": "…", "profile": null } }
 }
 ```
 
@@ -220,7 +218,7 @@ Eroare — `message` e gata de afișat global, `details` conține erorile pe câ
   "success": false,
   "statusCode": 422,
   "message": "Validation failed",
-  "details": { "password": ["Parola trebuie să aibă minim 8 caractere"] },
+  "details": { "password": ["Password must be at least 8 characters"] },
   "meta": { "path": "/api/v1/auth/register", "timestamp": "2026-09-18T06:00:00.000Z" }
 }
 ```

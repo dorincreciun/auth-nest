@@ -25,7 +25,7 @@ function captureResponse(errors: ValidationError[]): { message: string; details:
 describe('validationExceptionFactory', () => {
   it('grupează mesajele pe câmp', () => {
     const response = captureResponse([
-      buildError({ constraints: { isEmail: 'Adresa de email nu este validă' } }),
+      buildError({ constraints: { isEmail: 'The email address is not valid' } }),
       buildError({
         property: 'password',
         constraints: { minLength: 'Minim 8 caractere', matches: 'Trebuie o cifră' },
@@ -33,7 +33,7 @@ describe('validationExceptionFactory', () => {
     ]);
 
     expect(response.details).toEqual({
-      email: ['Adresa de email nu este validă'],
+      email: ['The email address is not valid'],
       password: ['Minim 8 caractere', 'Trebuie o cifră'],
     });
   });

@@ -63,7 +63,7 @@ describe('Autentificare (e2e)', () => {
       expect.objectContaining({
         success: true,
         statusCode: 201,
-        data: { user: expect.objectContaining({ email: credentials.email, isVerified: false }) },
+        data: { user: expect.objectContaining({ email: credentials.email }) },
       }),
     );
     expect(response.body.data.user).not.toHaveProperty('password');

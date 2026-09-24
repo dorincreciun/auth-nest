@@ -212,9 +212,6 @@ export class EnvironmentVariables {
   TOKEN_MAX_ATTEMPTS = 5;
 
   @IsDuration()
-  EMAIL_VERIFICATION_TOKEN_TTL: StringValue = '5m';
-
-  @IsDuration()
   PASSWORD_RESET_TOKEN_TTL: StringValue = '5m';
 
   /* ── Upload ────────────────────────────────────────────────────────────── */

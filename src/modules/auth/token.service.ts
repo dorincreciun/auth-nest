@@ -27,10 +27,10 @@ export interface IssuedToken {
 export class TokenService {
   private static readonly MESSAGES = {
     TOKEN_STILL_VALID:
-      'Un cod de verificare a fost deja trimis și este încă valabil. Te rugăm să aștepți înainte de a solicita altul.',
-    TOKEN_INVALID: 'Codul de verificare este invalid.',
-    TOKEN_EXPIRED: 'Codul de verificare a expirat.',
-    TOO_MANY_ATTEMPTS: 'Prea multe încercări. Cere un cod nou.',
+      'A code was already sent and is still valid. Wait before requesting another one.',
+    TOKEN_INVALID: 'The code is invalid.',
+    TOKEN_EXPIRED: 'The code has expired.',
+    TOO_MANY_ATTEMPTS: 'Too many attempts. Request a new code.',
   } as const;
 
   public constructor(

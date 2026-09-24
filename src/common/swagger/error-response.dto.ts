@@ -21,8 +21,8 @@ export class ErrorResponseDto {
     nullable: true,
     description: 'Erori pe câmp. null când eroarea nu e legată de câmpuri.',
     example: {
-      email: ['Adresa de email nu este validă'],
-      password: ['Parola trebuie să aibă minim 8 caractere'],
+      email: ['The email address is not valid'],
+      password: ['Password must be at least 8 characters'],
     },
     type: 'object',
     additionalProperties: {

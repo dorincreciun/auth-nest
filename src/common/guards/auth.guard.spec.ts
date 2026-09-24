@@ -13,7 +13,6 @@ function buildUser(): User {
     id: 'user-1',
     email: 'test@example.com',
     password: '$2b$10$hash',
-    isVerified: true,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

@@ -48,7 +48,6 @@ describe('UsersService', () => {
       findByIdWithProfile: jest.fn(),
       findByEmail: jest.fn(),
       create: jest.fn(),
-      setVerified: jest.fn(),
       setPassword: jest.fn(),
       findProfile: jest.fn().mockResolvedValue(buildProfile()),
       upsertProfile: jest.fn(),
@@ -65,14 +64,6 @@ describe('UsersService', () => {
     };
 
     service = new UsersService(repository, fileService as unknown as FileService, UPLOAD_CONFIG);
-  });
-
-  describe('markAsVerified', () => {
-    it('delegă către repository cu valoarea corectă', async () => {
-      await service.markAsVerified('user-1');
-
-      expect(repository.setVerified).toHaveBeenCalledWith('user-1', true);
-    });
   });
 
   describe('replaceAvatar', () => {

@@ -9,8 +9,8 @@ export class RegisterPayloadDto {
    * Adresa de email a noului cont
    * @example test@gmail.com
    */
-  @IsEmail({}, { message: 'Adresa de email nu este validă' })
-  @IsNotEmpty({ message: 'Email-ul este obligatoriu' })
+  @IsEmail({}, { message: 'The email address is not valid' })
+  @IsNotEmpty({ message: 'Email is required' })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )
@@ -20,21 +20,21 @@ export class RegisterPayloadDto {
    * Parola contului (minim 8 caractere, litere mari/mici, cifră și caracter special)
    * @example Password123!
    */
-  @IsString({ message: 'Parola trebuie să fie un text' })
-  @IsNotEmpty({ message: 'Parola este obligatorie' })
-  @MinLength(8, { message: 'Parola trebuie să aibă minim 8 caractere' })
-  @MaxLength(64, { message: 'Parola nu poate depăși 64 de caractere' })
+  @IsString({ message: 'Password must be a string' })
+  @IsNotEmpty({ message: 'Password is required' })
+  @MinLength(8, { message: 'Password must be at least 8 characters' })
+  @MaxLength(64, { message: 'Password cannot exceed 64 characters' })
   @Matches(/(?=.*[a-z])/, {
-    message: 'Parola trebuie să conțină cel puțin o literă mică',
+    message: 'Password must contain at least one lowercase letter',
   })
   @Matches(/(?=.*[A-Z])/, {
-    message: 'Parola trebuie să conțină cel puțin o literă mare',
+    message: 'Password must contain at least one uppercase letter',
   })
   @Matches(/(?=.*\d)/, {
-    message: 'Parola trebuie să conțină cel puțin o cifră',
+    message: 'Password must contain at least one digit',
   })
   @Matches(/(?=.*[@$!%*?&#^()_\-+=])/, {
-    message: 'Parola trebuie să conțină cel puțin un caracter special',
+    message: 'Password must contain at least one special character',
   })
   password: string;
 }

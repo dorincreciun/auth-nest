@@ -3,8 +3,8 @@
  *
  * @example
  * {
- *   email: ["Adresa de email nu este validă"],
- *   password: ["Parola trebuie să aibă minim 8 caractere", "Parola trebuie să conțină o cifră"]
+ *   email: ["The email address is not valid"],
+ *   password: ["Password must be at least 8 characters", "Password must contain a digit"]
  * }
  */
 export type ErrorDetails = Record<string, string[]> | null;

@@ -50,13 +50,6 @@ export class UsersRepository {
     });
   }
 
-  public setVerified(id: string, isVerified: boolean): Promise<User> {
-    return this.prisma.user.update({
-      where: { id },
-      data: { isVerified },
-    });
-  }
-
   public setPassword(id: string, passwordHash: string): Promise<User> {
     return this.prisma.user.update({
       where: { id },

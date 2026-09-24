@@ -14,7 +14,6 @@ const TOKEN_CONFIG = {
   secret: 's'.repeat(32),
   length: 6,
   maxAttempts: 5,
-  emailVerificationTtl: '5m',
   passwordResetTtl: '5m',
 } as const;
 
@@ -23,7 +22,6 @@ function buildUser(overrides: Partial<User> = {}): User {
     id: 'user-1',
     email: 'test@example.com',
     password: '$2b$10$hash',
-    isVerified: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -34,15 +32,10 @@ describe('AuthService', () => {
   let service: AuthService;
   let hashService: jest.Mocked<Pick<HashService, 'hash' | 'compare' | 'getDummyHash'>>;
   let usersService: jest.Mocked<
-    Pick<
-      UsersService,
-      'existsByEmail' | 'findByEmail' | 'create' | 'markAsVerified' | 'changePassword'
-    >
+    Pick<UsersService, 'existsByEmail' | 'findByEmail' | 'create' | 'changePassword'>
   >;
   let tokenService: jest.Mocked<Pick<TokenService, 'issue' | 'verify'>>;
-  let mailerService: jest.Mocked<
-    Pick<MailerService, 'sendVerificationEmail' | 'sendPasswordResetEmail'>
-  >;
+  let mailerService: jest.Mocked<Pick<MailerService, 'sendPasswordResetEmail'>>;
   let sessionService: jest.Mocked<Pick<SessionService, 'revokeAll'>>;
 
   beforeEach(async () => {
@@ -56,7 +49,6 @@ describe('AuthService', () => {
       existsByEmail: jest.fn().mockResolvedValue(false),
       findByEmail: jest.fn().mockResolvedValue(buildUser()),
       create: jest.fn().mockImplementation((email: string) => buildUser({ email })),
-      markAsVerified: jest.fn().mockResolvedValue(buildUser({ isVerified: true })),
       changePassword: jest.fn().mockResolvedValue(buildUser()),
     };
 
@@ -68,7 +60,6 @@ describe('AuthService', () => {
     };
 
     mailerService = {
-      sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
       sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -140,41 +131,6 @@ describe('AuthService', () => {
     });
   });
 
-  describe('sendVerificationEmail', () => {
-    it('trimite codul pe email și întoarce momentul expirării', async () => {
-      const result = await service.sendVerificationEmail(buildUser());
-
-      expect(mailerService.sendVerificationEmail).toHaveBeenCalledWith(
-        'test@example.com',
-        '123456',
-        expect.any(Date),
-      );
-      expect(result.tokenExpiresAt).toEqual(expect.any(String));
-    });
-
-    it('refuză retrimiterea pentru un cont deja verificat', async () => {
-      await expect(service.sendVerificationEmail(buildUser({ isVerified: true }))).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-  });
-
-  describe('confirmEmail', () => {
-    it('marchează contul ca verificat după validarea codului', async () => {
-      await service.confirmEmail(buildUser(), '123456');
-
-      expect(tokenService.verify).toHaveBeenCalledWith('user-1', '123456', 'EMAIL_VERIFICATION');
-      expect(usersService.markAsVerified).toHaveBeenCalledWith('user-1');
-    });
-
-    it('nu reconfirmă un cont deja verificat', async () => {
-      await expect(service.confirmEmail(buildUser({ isVerified: true }), '123456')).rejects.toThrow(
-        BadRequestException,
-      );
-      expect(tokenService.verify).not.toHaveBeenCalled();
-    });
-  });
-
   describe('forgotPassword', () => {
     it('trimite emailul de resetare pentru un cont existent', async () => {
       await service.forgotPassword({ email: 'test@example.com' });
@@ -197,7 +153,7 @@ describe('AuthService', () => {
       tokenService.issue.mockRejectedValue(new BadRequestException('Cod încă valabil'));
 
       await expect(service.forgotPassword({ email: 'test@example.com' })).resolves.toEqual(
-        expect.objectContaining({ message: expect.stringContaining('Dacă există un cont') }),
+        expect.objectContaining({ message: expect.stringContaining('If an account exists') }),
       );
     });
 

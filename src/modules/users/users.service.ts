@@ -15,7 +15,7 @@ import { UsersRepository } from './users.repository';
 @Injectable()
 export class UsersService {
   private static readonly MESSAGES = {
-    NO_AVATAR_TO_DELETE: 'Nu există un avatar de șters',
+    NO_AVATAR_TO_DELETE: 'There is no avatar to delete',
   } as const;
 
   public constructor(
@@ -43,10 +43,6 @@ export class UsersService {
   /** Așteaptă parola deja hash-uită — hashing-ul rămâne responsabilitatea `HashService`. */
   public create(email: string, passwordHash: string): Promise<User> {
     return this.repository.create(email, passwordHash);
-  }
-
-  public markAsVerified(userId: string): Promise<User> {
-    return this.repository.setVerified(userId, true);
   }
 
   public changePassword(userId: string, passwordHash: string): Promise<User> {

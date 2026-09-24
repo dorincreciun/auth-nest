@@ -25,7 +25,7 @@ import {
 import { TokenService } from './token.service';
 
 /**
- * Fluxurile de autentificare: cont nou, login, verificare email și resetare parolă.
+ * Fluxurile de autentificare: cont nou, login și resetare parolă.
  *
  * Serviciul nu știe nimic despre HTTP sau cookie-uri — pornirea sesiunii rămâne
  * în `SessionService`, apelat de controller.
@@ -34,17 +34,12 @@ import { TokenService } from './token.service';
 export class AuthService {
   private static readonly MESSAGES = {
     REGISTER_CONFLICT:
-      'Nu s-a putut finaliza înregistrarea. Verifică datele sau autentifică-te dacă ai deja un cont.',
-    LOGIN_INVALID_CREDENTIALS: 'Email sau parolă incorectă',
-    EMAIL_ALREADY_VERIFIED: 'Adresa de email este deja confirmată.',
-    EMAIL_VERIFICATION_SENT:
-      'Un nou cod de verificare a fost trimis pe adresa ta de email. Verifică și folderul Spam.',
-    EMAIL_CONFIRMED: 'Adresa ta de email a fost confirmată cu succes! Contul tău este acum activ.',
+      'Could not finish registration. Check your details, or sign in if you already have an account.',
+    LOGIN_INVALID_CREDENTIALS: 'Incorrect email or password',
     PASSWORD_RESET_SENT:
-      'Dacă există un cont cu această adresă, vei primi un email cu instrucțiuni de resetare. Verifică și folderul Spam.',
-    PASSWORD_RESET_SUCCESS:
-      'Parola ta a fost resetată cu succes. Toate dispozitivele au fost deconectate.',
-    RESET_TOKEN_INVALID: 'Codul de verificare este invalid.',
+      'If an account exists for this address, you will receive an email with reset instructions. Check the spam folder as well.',
+    PASSWORD_RESET_SUCCESS: 'Your password was reset. All devices have been signed out.',
+    RESET_TOKEN_INVALID: 'The reset code is invalid.',
   } as const;
 
   public constructor(
@@ -89,37 +84,6 @@ export class AuthService {
     }
 
     return user;
-  }
-
-  /** Trimite (sau retrimite) codul de confirmare a adresei de email. */
-  public async sendVerificationEmail(user: User): Promise<TokenSentDataDto> {
-    if (user.isVerified) {
-      throw new BadRequestException(AuthService.MESSAGES.EMAIL_ALREADY_VERIFIED);
-    }
-
-    const { token, expiresAt } = await this.tokenService.issue(
-      user.id,
-      'EMAIL_VERIFICATION',
-      this.tokens.emailVerificationTtl,
-    );
-
-    await this.mailerService.sendVerificationEmail(user.email, token, expiresAt);
-
-    return {
-      message: AuthService.MESSAGES.EMAIL_VERIFICATION_SENT,
-      tokenExpiresAt: expiresAt.toISOString(),
-    };
-  }
-
-  public async confirmEmail(user: User, token: string): Promise<MessageDataDto> {
-    if (user.isVerified) {
-      throw new BadRequestException(AuthService.MESSAGES.EMAIL_ALREADY_VERIFIED);
-    }
-
-    await this.tokenService.verify(user.id, token, 'EMAIL_VERIFICATION');
-    await this.usersService.markAsVerified(user.id);
-
-    return { message: AuthService.MESSAGES.EMAIL_CONFIRMED };
   }
 
   /**

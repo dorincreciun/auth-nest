@@ -9,12 +9,11 @@ const CONFIG = {
   secret: 's'.repeat(32),
   length: 6,
   maxAttempts: 3,
-  emailVerificationTtl: '5m',
   passwordResetTtl: '5m',
 } as const;
 
 const USER_ID = 'user-1';
-const TYPE: TokenType = 'EMAIL_VERIFICATION';
+const TYPE: TokenType = 'RESET_PASSWORD';
 
 function hashOf(token: string): string {
   return createHmac('sha256', CONFIG.secret).update(token).digest('hex');
@@ -96,7 +95,7 @@ describe('TokenService', () => {
       repository.findActive.mockResolvedValue(storedToken());
       repository.incrementAttempts.mockResolvedValue(storedToken({ attempts: CONFIG.maxAttempts }));
 
-      await expect(service.verify(USER_ID, '000000', TYPE)).rejects.toThrow(/Prea multe încercări/);
+      await expect(service.verify(USER_ID, '000000', TYPE)).rejects.toThrow(/Too many attempts/);
       expect(repository.delete).toHaveBeenCalledWith(USER_ID, TYPE);
     });
 
@@ -105,7 +104,7 @@ describe('TokenService', () => {
         storedToken({ expiresAt: new Date(Date.now() - 1000) }),
       );
 
-      await expect(service.verify(USER_ID, '123456', TYPE)).rejects.toThrow(/a expirat/);
+      await expect(service.verify(USER_ID, '123456', TYPE)).rejects.toThrow(/has expired/);
       expect(repository.delete).toHaveBeenCalledWith(USER_ID, TYPE);
     });
 

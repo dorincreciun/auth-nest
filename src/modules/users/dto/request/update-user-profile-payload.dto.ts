@@ -6,15 +6,15 @@ import { AtLeastOneProperty } from '../../../../common/decorators';
  * Cel puțin un câmp trebuie trimis.
  * Avatarul se actualizează separat (upload), nu prin acest endpoint.
  */
-@AtLeastOneProperty({ message: 'Trebuie să completezi cel puțin un câmp din profil!' })
+@AtLeastOneProperty({ message: 'Fill in at least one profile field.' })
 export class UpdateUserProfilePayloadDto {
   /**
    * Prenumele
    * @example Ion
    */
   @IsOptional()
-  @IsString({ message: 'Prenumele trebuie să fie un text' })
-  @MaxLength(50, { message: 'Prenumele nu poate depăși 50 de caractere' })
+  @IsString({ message: 'First name must be a string' })
+  @MaxLength(50, { message: 'First name cannot exceed 50 characters' })
   firstName?: string;
 
   /**
@@ -22,8 +22,8 @@ export class UpdateUserProfilePayloadDto {
    * @example Popescu
    */
   @IsOptional()
-  @IsString({ message: 'Numele trebuie să fie un text' })
-  @MaxLength(50, { message: 'Numele nu poate depăși 50 de caractere' })
+  @IsString({ message: 'Last name must be a string' })
+  @MaxLength(50, { message: 'Last name cannot exceed 50 characters' })
   lastName?: string;
 
   /**
@@ -31,8 +31,8 @@ export class UpdateUserProfilePayloadDto {
    * @example Chișinău, Moldova
    */
   @IsOptional()
-  @IsString({ message: 'Locația trebuie să fie un text' })
-  @MaxLength(100, { message: 'Locația nu poate depăși 100 de caractere' })
+  @IsString({ message: 'Location must be a string' })
+  @MaxLength(100, { message: 'Location cannot exceed 100 characters' })
   location?: string;
 
   /**
@@ -40,8 +40,8 @@ export class UpdateUserProfilePayloadDto {
    * @example Software Engineer
    */
   @IsOptional()
-  @IsString({ message: 'Titlul trebuie să fie un text' })
-  @MaxLength(100, { message: 'Titlul nu poate depăși 100 de caractere' })
+  @IsString({ message: 'Job title must be a string' })
+  @MaxLength(100, { message: 'Job title cannot exceed 100 characters' })
   jobTitle?: string;
 
   /**
@@ -49,7 +49,7 @@ export class UpdateUserProfilePayloadDto {
    * @example Pasionat de NestJS și TypeScript.
    */
   @IsOptional()
-  @IsString({ message: 'Bio trebuie să fie un text' })
-  @MaxLength(500, { message: 'Bio nu poate depăși 500 de caractere' })
+  @IsString({ message: 'Bio must be a string' })
+  @MaxLength(500, { message: 'Bio cannot exceed 500 characters' })
   bio?: string;
 }

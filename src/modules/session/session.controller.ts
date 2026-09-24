@@ -14,8 +14,8 @@ import { SessionService } from './session.service';
 @Controller('sessions')
 export class SessionController {
   private static readonly MESSAGES = {
-    OTHERS_REVOKED: 'Celelalte dispozitive au fost deconectate.',
-    SESSION_REVOKED: 'Sesiunea a fost închisă.',
+    OTHERS_REVOKED: 'The other devices have been signed out.',
+    SESSION_REVOKED: 'The session was closed.',
   } as const;
 
   public constructor(private readonly sessionService: SessionService) {}

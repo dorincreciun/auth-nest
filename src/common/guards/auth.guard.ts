@@ -16,8 +16,8 @@ export class AuthGuard implements CanActivate {
   private static readonly ACTIVITY_REFRESH_MS = 5 * 60 * 1000;
 
   private static readonly MESSAGES = {
-    INVALID_SESSION: 'Sesiune invalidă sau expirată',
-    USER_NOT_FOUND: 'Utilizatorul nu a fost găsit',
+    INVALID_SESSION: 'Invalid or expired session',
+    USER_NOT_FOUND: 'User was not found',
   } as const;
 
   public constructor(private readonly usersService: UsersService) {}

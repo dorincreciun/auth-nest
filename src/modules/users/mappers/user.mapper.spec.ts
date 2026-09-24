@@ -6,9 +6,8 @@ import { UserMapper } from './user.mapper';
 const user: User = {
   id: 'user-1',
   email: 'test@example.com',
-  password: '$2b$10$secret-hash',
-  isVerified: true,
-  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    password: '$2b$10$secret-hash',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
   updatedAt: new Date('2026-01-02T00:00:00.000Z'),
 };
 

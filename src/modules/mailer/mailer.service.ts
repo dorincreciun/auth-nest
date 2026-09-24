@@ -7,25 +7,6 @@ export class MailerService {
 
   constructor(private readonly nestMailer: NestMailerService) {}
 
-  async sendVerificationEmail(to: string, token: string, expiresAt: Date): Promise<void> {
-    try {
-      const expiresInMinutes = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60));
-
-      await this.nestMailer.sendMail({
-        to,
-        subject: 'Confirmă contul',
-        template: 'verification',
-        context: {
-          token,
-          expiresInMinutes,
-        },
-      });
-    } catch (error) {
-      this.logger.error(`Eșec trimitere email către ${to}`, error);
-      throw error;
-    }
-  }
-
   async sendPasswordResetEmail(to: string, token: string, expiresAt: Date): Promise<void> {
     try {
       const expiresInMinutes = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60));

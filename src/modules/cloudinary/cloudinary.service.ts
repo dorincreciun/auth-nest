@@ -40,7 +40,7 @@ export class CloudinaryService {
     try {
       await this.cloudinary.uploader.destroy(publicId);
     } catch {
-      throw new InternalServerErrorException('Eroare la ștergerea fișierului de pe Cloudinary');
+      throw new InternalServerErrorException('Failed to delete the file from Cloudinary');
     }
   }
 

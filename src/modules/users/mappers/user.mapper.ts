@@ -11,7 +11,6 @@ export class UserMapper {
     return {
       id: user.id,
       email: user.email,
-      isVerified: user.isVerified,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       profile: null,

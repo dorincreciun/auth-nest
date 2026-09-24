@@ -12,6 +12,6 @@ describe('duration.util', () => {
   });
 
   it('aruncă în loc să propage NaN pentru durate invalide', () => {
-    expect(() => toMilliseconds('nu-e-durată' as never)).toThrow(/nu este validă/);
+    expect(() => toMilliseconds('nu-e-durată' as never)).toThrow(/is not valid/);
   });
 });

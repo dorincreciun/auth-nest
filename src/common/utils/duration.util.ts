@@ -8,7 +8,7 @@ export function toMilliseconds(duration: StringValue): number {
   const milliseconds = ms(duration);
 
   if (typeof milliseconds !== 'number' || !Number.isFinite(milliseconds) || milliseconds <= 0) {
-    throw new Error(`Durata "${duration}" nu este validă (ex. "30s", "15m", "7d")`);
+    throw new Error(`Duration "${duration}" is not valid (e.g. "30s", "15m", "7d")`);
   }
 
   return milliseconds;

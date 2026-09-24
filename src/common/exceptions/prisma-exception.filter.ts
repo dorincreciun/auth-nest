@@ -32,21 +32,21 @@ interface MappedPrismaError {
 )
 export class PrismaExceptionFilter implements ExceptionFilter {
   private static readonly MESSAGES = {
-    VALIDATION_ERROR: 'Datele trimise nu respectă schema așteptată.',
-    DB_UNAVAILABLE: 'Serviciul de bază de date este momentan indisponibil.',
-    RUST_PANIC: 'A apărut o eroare internă critică. Reîncearcă mai târziu.',
-    UNKNOWN_REQUEST_ERROR: 'A apărut o eroare neașteptată la nivel de bază de date.',
+    VALIDATION_ERROR: 'The submitted data does not match the expected schema.',
+    DB_UNAVAILABLE: 'The database service is temporarily unavailable.',
+    RUST_PANIC: 'A critical internal error occurred. Try again later.',
+    UNKNOWN_REQUEST_ERROR: 'An unexpected database error occurred.',
     P2002:
-      'Nu s-a putut finaliza operația. Verifică datele sau autentifică-te dacă ai deja un cont.',
-    P2025: 'Resursa cerută nu a fost găsită.',
-    P2003: (field?: string) => `Relația către "${field ?? 'o altă resursă'}" nu este validă.`,
-    P2014: 'Această operație ar încălca o relație obligatorie.',
-    P2000: (field?: string) => `Valoarea trimisă pentru "${field ?? 'un câmp'}" este prea lungă.`,
-    P2020: 'O valoare trimisă este în afara intervalului acceptat.',
-    P2011: (field?: string) => `Câmpul "${field ?? 'necunoscut'}" nu poate fi gol.`,
-    P2010: 'Query-ul nu a putut fi executat corect.',
-    P2024: 'Baza de date a răspuns prea greu. Încearcă din nou.',
-    DEFAULT: 'A apărut o eroare la procesarea cererii în baza de date.',
+      'The operation could not be completed. Check your details, or sign in if you already have an account.',
+    P2025: 'The requested resource was not found.',
+    P2003: (field?: string) => `The relation to "${field ?? 'another resource'}" is not valid.`,
+    P2014: 'This operation would break a required relation.',
+    P2000: (field?: string) => `The value sent for "${field ?? 'a field'}" is too long.`,
+    P2020: 'A submitted value is outside the accepted range.',
+    P2011: (field?: string) => `The field "${field ?? 'unknown'}" cannot be empty.`,
+    P2010: 'The query could not be executed.',
+    P2024: 'The database took too long to respond. Try again.',
+    DEFAULT: 'An error occurred while processing the request in the database.',
   } as const;
 
   private readonly logger = new Logger(PrismaExceptionFilter.name);

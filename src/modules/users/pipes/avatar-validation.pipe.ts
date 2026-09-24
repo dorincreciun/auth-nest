@@ -13,8 +13,8 @@ import { MFile } from '../../file';
 @Injectable()
 export class AvatarValidationPipe implements PipeTransform<Express.Multer.File | undefined, MFile> {
   private static readonly MESSAGES = {
-    MISSING: 'Trimite un fișier imagine în câmpul "avatarFile"',
-    UNSUPPORTED_TYPE: 'Sunt acceptate doar imagini JPEG, PNG, WebP sau GIF',
+    MISSING: 'Send an image file in the "avatarFile" field',
+    UNSUPPORTED_TYPE: 'Only JPEG, PNG, WebP, or GIF images are accepted',
   } as const;
 
   public constructor(
@@ -31,7 +31,7 @@ export class AvatarValidationPipe implements PipeTransform<Express.Multer.File |
     }
 
     if (file.size > this.uploads.avatarMaxSizeBytes) {
-      throw new BadRequestException(`Avatarul nu poate depăși ${this.uploads.avatarMaxSizeMb} MB`);
+      throw new BadRequestException(`The avatar cannot exceed ${this.uploads.avatarMaxSizeMb} MB`);
     }
 
     return new MFile(file);

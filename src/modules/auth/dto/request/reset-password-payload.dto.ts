@@ -17,8 +17,8 @@ export class ResetPasswordPayloadDto {
    * Adresa de email a contului
    * @example test@gmail.com
    */
-  @IsEmail({}, { message: 'Adresa de email nu este validă' })
-  @IsNotEmpty({ message: 'Email-ul este obligatoriu' })
+  @IsEmail({}, { message: 'The email address is not valid' })
+  @IsNotEmpty({ message: 'Email is required' })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )
@@ -28,30 +28,30 @@ export class ResetPasswordPayloadDto {
    * Codul OTP de 6 cifre primit pe email
    * @example 123456
    */
-  @IsString({ message: 'Token-ul trebuie să fie un text.' })
-  @Length(6, 6, { message: 'Token-ul trebuie să conțină exact 6 cifre.' })
-  @Matches(/^[0-9]+$/, { message: 'Token-ul poate conține doar cifre.' })
+  @IsString({ message: 'The code must be a string.' })
+  @Length(6, 6, { message: 'The code must be exactly 6 digits.' })
+  @Matches(/^[0-9]+$/, { message: 'The code can contain digits only.' })
   token: string;
 
   /**
    * Noua parolă (minim 8 caractere, litere mari/mici, cifră și caracter special)
    * @example NewPassword123!
    */
-  @IsString({ message: 'Parola trebuie să fie un text' })
-  @IsNotEmpty({ message: 'Parola este obligatorie' })
-  @MinLength(8, { message: 'Parola trebuie să aibă minim 8 caractere' })
-  @MaxLength(64, { message: 'Parola nu poate depăși 64 de caractere' })
+  @IsString({ message: 'Password must be a string' })
+  @IsNotEmpty({ message: 'Password is required' })
+  @MinLength(8, { message: 'Password must be at least 8 characters' })
+  @MaxLength(64, { message: 'Password cannot exceed 64 characters' })
   @Matches(/(?=.*[a-z])/, {
-    message: 'Parola trebuie să conțină cel puțin o literă mică',
+    message: 'Password must contain at least one lowercase letter',
   })
   @Matches(/(?=.*[A-Z])/, {
-    message: 'Parola trebuie să conțină cel puțin o literă mare',
+    message: 'Password must contain at least one uppercase letter',
   })
   @Matches(/(?=.*\d)/, {
-    message: 'Parola trebuie să conțină cel puțin o cifră',
+    message: 'Password must contain at least one digit',
   })
   @Matches(/(?=.*[@$!%*?&#^()_\-+=])/, {
-    message: 'Parola trebuie să conțină cel puțin un caracter special',
+    message: 'Password must contain at least one special character',
   })
   newPassword: string;
 }

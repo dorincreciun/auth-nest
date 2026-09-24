@@ -24,10 +24,10 @@ type SessionCallback = (error?: Error | null) => void;
 @Injectable()
 export class SessionService {
   private static readonly MESSAGES = {
-    REGENERATE_FAILED: 'Sesiunea nu a putut fi reînnoită',
-    SAVE_FAILED: 'Sesiunea nu a putut fi salvată',
-    DESTROY_FAILED: 'Sesiunea nu a putut fi închisă',
-    SESSION_NOT_FOUND: 'Sesiunea cerută nu există sau a expirat deja',
+    REGENERATE_FAILED: 'The session could not be renewed',
+    SAVE_FAILED: 'The session could not be saved',
+    DESTROY_FAILED: 'The session could not be closed',
+    SESSION_NOT_FOUND: 'The requested session does not exist or has already expired',
   } as const;
 
   public constructor(

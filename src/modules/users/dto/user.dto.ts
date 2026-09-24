@@ -21,12 +21,6 @@ export class UserDto {
   email: string;
 
   /**
-   * Dacă adresa de email a fost confirmată
-   * @example false
-   */
-  isVerified: boolean;
-
-  /**
    * Data și ora la care a fost creat contul
    * @example 2026-07-24T12:00:00.000Z
    */

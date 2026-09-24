@@ -9,8 +9,8 @@ export class ForgotPasswordPayloadDto {
    * Adresa de email pentru care se solicită resetarea parolei
    * @example test@gmail.com
    */
-  @IsEmail({}, { message: 'Adresa de email nu este validă' })
-  @IsNotEmpty({ message: 'Email-ul este obligatoriu' })
+  @IsEmail({}, { message: 'The email address is not valid' })
+  @IsNotEmpty({ message: 'Email is required' })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )

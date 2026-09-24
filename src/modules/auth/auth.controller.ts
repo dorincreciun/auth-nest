@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { type User } from '@prisma/client';
 import type { Request, Response } from 'express';
 
 import { Auth, CurrentUser } from '../../common/decorators';
@@ -21,7 +20,6 @@ import { UserDto, UserMapper, UserProfileDto, UsersService } from '../users';
 import { AuthService } from './auth.service';
 import {
   AuthUserDataDto,
-  ConfirmEmailPayloadDto,
   ForgotPasswordPayloadDto,
   LoginPayloadDto,
   MessageDataDto,
@@ -36,8 +34,8 @@ const USER_EXTRA_MODELS = [UserDto, UserProfileDto];
 @Controller('auth')
 export class AuthController {
   private static readonly MESSAGES = {
-    LOGOUT_SUCCESS: 'Deconectare reușită',
-    USER_NOT_AUTHENTICATED: 'Nu ești autentificat. Autentifică-te pentru a continua.',
+    LOGOUT_SUCCESS: 'Signed out',
+    USER_NOT_AUTHENTICATED: 'You are not signed in. Sign in to continue.',
   } as const;
 
   public constructor(
@@ -147,45 +145,6 @@ export class AuthController {
     }
 
     return { user: UserMapper.toDtoWithProfile(user) };
-  }
-
-  /** Trimite pe email codul care confirmă că adresa introdusă este reală. */
-  @SkipThrottle({ short: true, long: true })
-  @Throttle({ medium: { limit: 2, ttl: 5 * 60 * 1000 } })
-  @Auth()
-  @HttpCode(HttpStatus.OK)
-  @Post('email/verify/send')
-  @ApiOperation({ summary: 'Trimite codul de verificare a emailului' })
-  @ApiSuccessResponse(TokenSentDataDto, {
-    status: 200,
-    description: 'Cod de verificare trimis pe email',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Email deja confirmat / cod încă valid',
-    type: ErrorResponseDto,
-  })
-  @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
-  public sendVerificationEmail(@CurrentUser() user: User): Promise<TokenSentDataDto> {
-    return this.authService.sendVerificationEmail(user);
-  }
-
-  /** Confirmă adresa de email pe baza codului primit. */
-  @SkipThrottle({ short: true, long: true })
-  @Throttle({ medium: { limit: 5, ttl: 5 * 60 * 1000 } })
-  @Auth()
-  @HttpCode(HttpStatus.OK)
-  @Post('email/verify/confirm')
-  @ApiOperation({ summary: 'Confirmă emailul cu codul primit' })
-  @ApiSuccessResponse(MessageDataDto, { status: 200, description: 'Email confirmat cu succes' })
-  @ApiResponse({ status: 400, description: 'Cod invalid / expirat', type: ErrorResponseDto })
-  @ApiResponse({ status: 422, description: 'Date invalide', type: ErrorResponseDto })
-  @ApiResponse({ status: 429, description: 'Prea multe cereri', type: ErrorResponseDto })
-  public confirmEmail(
-    @CurrentUser() user: User,
-    @Body() payload: ConfirmEmailPayloadDto,
-  ): Promise<MessageDataDto> {
-    return this.authService.confirmEmail(user, payload.token);
   }
 
   /**
